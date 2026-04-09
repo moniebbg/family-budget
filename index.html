@@ -33,14 +33,34 @@
         label { display: block; font-weight: 600; margin-bottom: 5px; }
         input { 
     width: 100%; 
-    max-width: -webkit-fill-available; /* 關鍵：確保喺 iPhone 唔會爆框 */
+    max-width: -webkit-fill-available; 
     padding: 12px; 
     border: 1px solid #d1d1d6; 
     border-radius: 8px; 
-    box-sizing: border-box; /* 確保 Padding 唔會撐大個框 */
+    box-sizing: border-box; 
     font-size: 16px; 
-    margin: 0 0 10px 0; /* 確保冇左右 margin 影響對齊 */
+    margin: 0 0 10px 0; 
     display: block; 
+    
+    /* 加入下面呢幾行來解決置中問題 */
+    text-align: center; 
+    appearance: none; /* 去除瀏覽器預設樣式 */
+    -webkit-appearance: none; 
+}
+
+/* 針對 Date Input 嘅 iPhone 特殊修正 */
+input[type="date"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 確保文字喺 Safari 垂直水平都置中 */
+    padding-left: 0; 
+    padding-right: 0;
+}
+
+/* 隱藏 iPhone 預設可能出現嘅「清除」掣，等佢唔會擠偏文字 */
+input::-webkit-calendar-picker-indicator {
+    margin: 0;
 }
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--p-color); color: white; }
@@ -175,13 +195,16 @@
 
 <div class="bottom-nav">
     <div id="nav-mark" class="nav-item active" onclick="showPage('mark')">
-        <span class="nav-icon">✍️</span>Mark 數
+        <span class="nav-icon">✍️</span>
+        Mark 數 <span class="lang-sub" style="font-size: 10px;">Input</span>
     </div>
     <div id="nav-settle" class="nav-item" onclick="showPage('settle')">
-        <span class="nav-icon">📊</span>結算
+        <span class="nav-icon">📊</span>
+        結算 <span class="lang-sub" style="font-size: 10px;">Settle</span>
     </div>
     <div id="nav-cards" class="nav-item" onclick="showPage('cards')">
-        <span class="nav-icon">💳</span>會員
+        <span class="nav-icon">💳</span>
+        會員 <span class="lang-sub" style="font-size: 10px;">Cards</span>
     </div>
 </div>
 
