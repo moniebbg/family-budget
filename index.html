@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --p-color: #007aff; --bg: #f2f2f7; --card: #ffffff; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #1c1c1e; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px 15px 100px 15px; color: #1c1c1e; }
         .card { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h2, h3 { margin: 0 0 10px 0; }
         .lang-sub { font-size: 0.8em; color: #8e8e93; display: block; }
@@ -27,47 +27,141 @@
         .tag-plus { background: #eafaf1; color: #2ecc71; }
         .tag-minus { background: #fef1f1; color: #e74c3c; }
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        /* 底部導航欄導 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+            z-index: 1000;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom)); /* 兼容 iPhone 底線 */
+        }
+        .nav-item {
+            text-align: center;
+            color: #8e8e93;
+            font-size: 11px;
+            flex: 1;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .nav-item.active {
+            color: var(--p-color);
+            font-weight: bold;
+        }
+        .nav-icon {
+            font-size: 22px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* 分頁邏輯 */
+        .page { display: none; padding-bottom: 80px; } /* 預留位俾 Menu，費事遮住內容 */
+        .page.active { display: block; }
+
+        /* 最近紀錄樣式 */
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f2f2f7;
+            font-size: 14px;
+        }
+        /* 深色模式支援 */
+        @media (prefers-color-scheme: dark) {
+            :root { 
+                --bg: #1c1c1e; 
+                --card: #2c2c2e; 
+            }
+            body { color: #ffffff; }
+            .card { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+            .month-nav, .bottom-nav { background: #1c1c1e; border-bottom: 1px solid #38383a; }
+            .nav-btn, .m-btn { background: #3a3a3c; border-color: #48484a; color: white; }
+            input { background: #3a3a3c; border-color: #48484a; color: white; }
+            .recent-item, .summary-item { border-bottom-color: #38383a; }
+            .lang-sub { color: #aeaeb2; }
+        }
     </style>
 </head>
 <body>
-
 <div id="loading">處理中... / Processing...</div>
 
-<div class="month-nav">
-    <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
-    <div style="text-align: center;">
-        <h3 id="curMonthText">2026-04</h3>
-        <span class="lang-sub">Month / 月份</span>
-    </div>
-    <button class="nav-btn" onclick="changeMonth(1)">▶</button>
-</div>
-
-<div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:start;">
-        <div>
-            <h2 id="totalDisplay">£0.00</h2>
-            <span class="lang-sub">Total Spent / 本月總開支</span>
+<div id="page-mark" class="page active">
+    <div class="month-nav">
+        <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+        <div style="text-align: center;">
+            <h3 class="curMonthText">2026-04</h3>
+            <span class="lang-sub">Month / 月份</span>
         </div>
-        <button class="btn-export" onclick="exportToExcel()">Excel ⬇</button>
+        <button class="nav-btn" onclick="changeMonth(1)">▶</button>
     </div>
-    <div id="settleList" style="margin-top:15px;"></div>
+
+    <div class="card">
+        <label>Who paid? / 邊個俾錢？</label>
+        <div class="member-grid" id="memberBtns"></div>
+        <label>Date / 日期</label>
+        <input type="date" id="iptDate">
+        <label>Description / 買咗乜</label>
+        <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
+        <label>Amount / 金額 (£)</label>
+        <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
+        <button class="btn" style="background:#5856d6; color:white;" onclick="addFixedExpenses()">➕ 一鍵加入固定支出 (Rent/Tax/Bills)</button>
+        <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
+    </div>
+
+    <div class="card">
+        <h3>Recent 5 Entries / 最近 5 次紀錄</h3>
+        <div id="recentList"></div>
+    </div>
 </div>
 
-<div class="card">
-    <label>Who paid? / 邊個俾錢？</label>
-    <div class="member-grid" id="memberBtns"></div>
-    <label>Date / 日期</label>
-    <input type="date" id="iptDate">
-    <label>Description / 買咗乜</label>
-    <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
-    <label>Amount / 金額 (£)</label>
-    <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
-    <button class="btn" style="background:#5856d6; color:white;" onclick="addFixedExpenses()">➕ 一鍵加入固定支出 (Rent/Tax/Bills)</button>
-    <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
+<div id="page-settle" class="page">
+    <div class="month-nav">
+        <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+        <div style="text-align: center;">
+            <h3 class="curMonthText">2026-04</h3>
+            <span class="lang-sub">Month / 月份</span>
+        </div>
+        <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+    </div>
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div>
+                <h2 id="totalDisplay">£0.00</h2>
+                <span class="lang-sub">Total Spent / 本月總開支</span>
+            </div>
+            <button class="btn-export" onclick="exportToExcel()">Excel ⬇</button>
+        </div>
+        <div id="settleList" style="margin-top:15px;"></div>
+    </div>
+</div>
+
+<div id="page-cards" class="page">
+    <div class="card">
+        <h2>Member Cards / 會員卡</h2>
+        <div id="memberCardList">
+            <p style="color:#8e8e93; text-align:center; padding:20px;">Coming Soon (A-Z List)</p>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <div id="nav-mark" class="nav-item active" onclick="showPage('mark')">
+        <span class="nav-icon">✍️</span>Mark 數
+    </div>
+    <div id="nav-settle" class="nav-item" onclick="showPage('settle')">
+        <span class="nav-icon">📊</span>結算
+    </div>
+    <div id="nav-cards" class="nav-item" onclick="showPage('cards')">
+        <span class="nav-icon">💳</span>會員
+    </div>
 </div>
 
 <input type="file" id="aiFile" accept="image/*" style="display:none" onchange="processAI(this)">
-
 <script>
     const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec';
     let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [] };
@@ -99,7 +193,7 @@
     async function fetchData() {
         showLoading(true);
         try {
-            const r = await fetch(API);
+            const r = await fetch(API + '?nocache=' + Date.now());
             const j = await r.json();
             state.expenses = j.data.expenses;
             renderSummary();
@@ -108,15 +202,23 @@
     }
 
     function renderSummary() {
-        document.getElementById('curMonthText').innerText = activeMonth;
-        const monthly = state.expenses.filter(e => e.month === activeMonth);
-        const total = monthly.reduce((s, e) => s + e.amount, 0);
-        const each = total / 4;
+        document.querySelectorAll('.curMonthText').forEach(el => el.innerText = activeMonth);
+        
+        const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
+        const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const each = total / state.members.length;
+        
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
-        let settleHtml = '';
+        
+        // 1. 渲染結算表 & 準備清算數據
+        let settleHtml = `<p style="margin-bottom:10px; font-weight:bold; color:var(--p-color);">Per Person / 每人應付: £${each.toFixed(2)}</p>`;
+        let memberBalances = [];
+
         state.members.forEach(m => {
-            const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + e.amount, 0);
+            const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
             const bal = paid - each;
+            memberBalances.push({ name: m, balance: bal });
+
             settleHtml += `
                 <div class="summary-item">
                     <span>${m} <span class="lang-sub">Paid £${paid.toFixed(2)}</span></span>
@@ -125,7 +227,39 @@
                     </span>
                 </div>`;
         });
-        document.getElementById('settleList').innerHTML = settleHtml;
+
+        // 2. 計算「邊個畀錢邊個」(Clearing House Algorithm)
+        let clearingHtml = '<div style="margin-top:20px; border-top:2px dashed #e5e5ea; padding-top:15px;"><h3>Suggested Payments / 轉帳建議</h3>';
+        let debtors = memberBalances.filter(m => m.balance < -0.01).sort((a, b) => a.balance - b.balance);
+        let creditors = memberBalances.filter(m => m.balance > 0.01).sort((a, b) => b.balance - a.balance);
+
+        if (debtors.length === 0) {
+            clearingHtml += '<p style="color:#8e8e93;">All settled! / 帳目已清</p>';
+        } else {
+            debtors.forEach(d => {
+                let debt = Math.abs(d.balance);
+                creditors.forEach(c => {
+                    if (debt > 0 && c.balance > 0) {
+                        let amount = Math.min(debt, c.balance);
+                        clearingHtml += `<p style="font-size:14px; margin:5px 0;">💸 <strong>${d.name}</strong> ➔ <strong>${c.name}</strong>: <span style="color:#e74c3c; font-weight:bold;">£${amount.toFixed(2)}</span></p>`;
+                        debt -= amount;
+                        c.balance -= amount;
+                    }
+                });
+            });
+        }
+        clearingHtml += '</div>';
+        document.getElementById('settleList').innerHTML = settleHtml + clearingHtml;
+
+        // 3. 渲染最近 5 條紀錄
+        const recent5 = [...state.expenses].reverse().slice(0, 5);
+        let recentHtml = recent5.map(e => `
+            <div class="recent-item">
+                <span><strong>${e.member}</strong>: ${e.desc}</span>
+                <span style="color:#555;">£${parseFloat(e.amount).toFixed(2)}</span>
+            </div>
+        `).join('');
+        document.getElementById('recentList').innerHTML = recentHtml || '<p style="text-align:center;color:#ccc;">No records</p>';
     }
 
     function changeMonth(step) {
@@ -152,69 +286,40 @@
         location.reload();
     }
 
-    function triggerAI() { document.getElementById('aiFile').click(); }
-
-    async function processAI(input) {
-        if(!input.files[0]) return;
-        showLoading(true);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const base64 = e.target.result.split(',')[1];
-            const resp = await fetch(API, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'scan_receipt', base64: base64 })
-            });
-            const res = await resp.json();
-            if(res.ok) {
-                const matches = res.text.match(/\d+\.\d{2}/g);
-                if(matches) document.getElementById('iptAmt').value = matches[matches.length-1];
-                document.getElementById('iptDesc').value = "[AI Scan] Check detail";
-                alert('Scan Success!');
-            } else { alert('Scan failed'); }
-            showLoading(false);
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-async function addFixedExpenses() {
-    if(!confirm('Confirm adding fixed expenses? / 確定加入固定支出？')) return;
-    const date = document.getElementById('iptDate').value;
-    const month = date.slice(0, 7);
-    
-    // 1. 即時更新畫面 (唔使等後台，所以 load 得快)
-    FIXED_ITEMS.forEach(f => {
-        state.expenses.push({ 
-            ...f, 
-            date: date, 
-            month: month, 
-            id: 'temp-' + Date.now() + Math.random() 
+    async function addFixedExpenses() {
+        if(!confirm('Confirm adding fixed expenses? / 確定加入固定支出？')) return;
+        const date = document.getElementById('iptDate').value;
+        const month = date.slice(0, 7);
+        FIXED_ITEMS.forEach(f => {
+            state.expenses.push({ ...f, date: date, month: month, id: 'temp-' + Date.now() });
         });
-    });
-    renderSummary(); 
-    alert('OK! Added locally. Saving to cloud in background...\n已即時更新結算，後台寫入中！');
+        renderSummary(); 
+        alert('Added locally! Saving...');
+        fetch(API, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
+        });
+    }
 
-    // 2. 背景入數 (唔加 await，唔使等佢行完)
-    fetch(API, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
-    });
-}
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('nav-' + pageId).classList.add('active');
+        renderSummary();
+    }
+
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'flex' : 'none';
+    }
+
     function exportToExcel() {
-        const monthly = state.expenses.filter(e => e.month === activeMonth);
+        const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
         const ws = XLSX.utils.json_to_sheet(monthly);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         XLSX.writeFile(wb, `Family_Expenses_${activeMonth}.xlsx`);
     }
-
-    function showLoading(show) { 
-    const loader = document.getElementById('loading');
-    if (show) {
-        loader.style.display = 'flex';
-    } else {
-        // 增加一個極微細嘅延遲，令畫面切換順啲
-        setTimeout(() => { loader.style.display = 'none'; }, 200);
-    }
-}
 </script>
 </body>
 </html>
