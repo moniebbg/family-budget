@@ -11,33 +11,21 @@
         .card { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h2, h3 { margin: 0 0 10px 0; }
         .lang-sub { font-size: 0.8em; color: #8e8e93; display: block; }
-        
-        /* 月份導航 */
         .month-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 15px; }
         .nav-btn { background: #e5e5ea; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
-
-        /* 成員選擇 */
         .member-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
         .m-btn { background: #fff; border: 2px solid #e5e5ea; border-radius: 12px; padding: 10px 5px; text-align: center; cursor: pointer; transition: 0.2s; }
         .m-btn.active { border-color: var(--p-color); background: #e7f3ff; font-weight: bold; }
-
-        /* 輸入區 */
-        .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: 600; margin-bottom: 5px; }
         input { width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
-        
-        /* 按鈕風格 */
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--p-color); color: white; }
         .btn-ai { background: #34c759; color: white; }
         .btn-export { background: #8e8e93; color: white; font-size: 13px; padding: 8px; }
-
-        /* 結算清單 */
         .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f2f2f7; }
         .status-tag { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .tag-plus { background: #eafaf1; color: #2ecc71; }
         .tag-minus { background: #fef1f1; color: #e74c3c; }
-
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
     </style>
 </head>
@@ -68,16 +56,12 @@
 <div class="card">
     <label>Who paid? / 邊個俾錢？</label>
     <div class="member-grid" id="memberBtns"></div>
-
     <label>Date / 日期</label>
     <input type="date" id="iptDate">
-
     <label>Description / 買咗乜</label>
     <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
-
     <label>Amount / 金額 (£)</label>
     <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
-
     <button class="btn btn-ai" onclick="triggerAI()">📷 AI Scan / 掃描收據</button>
     <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
 </div>
@@ -85,19 +69,18 @@
 <input type="file" id="aiFile" accept="image/*" style="display:none" onchange="processAI(this)">
 
 <script>
-    const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec'; // <--- 貼上你的 URL
+    const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec';
     let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [] };
     let activeMember = 'Peter';
     let activeMonth = new Date().toISOString().slice(0, 7);
-    // 定義固定支出清單
-    const FIXED_ITEMS = [
-    { desc: 'Rent', amount: 1315.00, member: 'Peter' },
-    { desc: 'Council Tax', amount: 179.00, member: 'Peter' },
-    { desc: 'Sky Broadband', amount: 34.00, member: 'Peter' },
-    { desc: 'OVO', amount: 190.00, member: 'Peter' },
-];
 
-    // 初始化
+    const FIXED_ITEMS = [
+        { desc: 'Rent', amount: 1315.00, member: 'Peter' },
+        { desc: 'Council Tax', amount: 179.00, member: 'Peter' },
+        { desc: 'Sky Broadband', amount: 34.00, member: 'Peter' },
+        { desc: 'OVO', amount: 190.00, member: 'Peter' }
+    ];
+
     window.onload = () => {
         document.getElementById('iptDate').value = new Date().toISOString().slice(0, 10);
         renderMembers();
@@ -106,9 +89,7 @@
 
     function renderMembers() {
         const html = state.members.map(m => `
-            <div class="m-btn ${m === activeMember ? 'active' : ''}" onclick="setMember('${m}')">
-                ${m}
-            </div>
+            <div class="m-btn ${m === activeMember ? 'active' : ''}" onclick="setMember('${m}')">${m}</div>
         `).join('');
         document.getElementById('memberBtns').innerHTML = html;
     }
@@ -131,9 +112,7 @@
         const monthly = state.expenses.filter(e => e.month === activeMonth);
         const total = monthly.reduce((s, e) => s + e.amount, 0);
         const each = total / 4;
-        
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
-        
         let settleHtml = '';
         state.members.forEach(m => {
             const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + e.amount, 0);
@@ -161,21 +140,15 @@
         const desc = document.getElementById('iptDesc').value;
         const amt = parseFloat(document.getElementById('iptAmt').value);
         if(!desc || !amt) return alert('Please fill in / 請填寫完整');
-        
         showLoading(true);
         const item = {
-            member: activeMember,
-            desc: desc,
-            amount: amt,
-            month: activeMonth,
-            date: document.getElementById('iptDate').value
+            member: activeMember, desc: desc, amount: amt,
+            month: activeMonth, date: document.getElementById('iptDate').value
         };
-        
         await fetch(API, {
             method: 'POST',
             body: JSON.stringify({ action: 'add_batch', items: [item] })
         });
-        
         location.reload();
     }
 
@@ -193,12 +166,11 @@
             });
             const res = await resp.json();
             if(res.ok) {
-                // 簡易 AI 邏輯：搵文字入面最後一個金額格式
                 const matches = res.text.match(/\d+\.\d{2}/g);
                 if(matches) document.getElementById('iptAmt').value = matches[matches.length-1];
                 document.getElementById('iptDesc').value = "[AI Scan] Check detail";
-                alert('Scan Success! Please verify amount.\n掃描成功！請核對金額。');
-            } else { alert('Scan failed / 掃描失敗'); }
+                alert('Scan Success!');
+            } else { alert('Scan failed'); }
             showLoading(false);
         };
         reader.readAsDataURL(input.files[0]);
