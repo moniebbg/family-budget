@@ -268,15 +268,27 @@ input::-webkit-calendar-picker-indicator {
     function setMember(m) { activeMember = m; renderMembers(); }
 
     async function fetchData() {
-        showLoading(true);
-        try {
-            const r = await fetch(API + '?nocache=' + Date.now());
-            const j = await r.json();
-            state.expenses = j.data.expenses;
+    showLoading(true);
+    try {
+        // 加個 nocache 確保每次都係攞最新數據
+        const r = await fetch(API + '?nocache=' + Date.now());
+        const j = await r.json();
+        
+        if (j.ok) {
+            state.expenses = j.data.expenses || [];
+            state.cards = j.data.cards || []; // 呢度就係同步返嚟嘅卡片
             renderSummary();
-        } catch(e) { alert('Error loading data'); }
-        showLoading(false);
+            // 如果你正處於會員卡頁面，就順便更新畫面
+            if (document.getElementById('page-cards').classList.contains('active')) {
+                renderCards();
+            }
+        }
+    } catch(e) { 
+        console.error(e);
+        alert('連線失敗，請檢查網路或 API 網址'); 
     }
+    showLoading(false);
+}
 
     function renderSummary() {
         document.querySelectorAll('.curMonthText').forEach(el => el.innerText = activeMonth);
@@ -398,51 +410,66 @@ let recentHtml = recent5.map(e => `
         XLSX.utils.book_append_sheet(wb, ws, "Expenses");
         XLSX.writeFile(wb, `Family_Expenses_${activeMonth}.xlsx`);
     }
-    // 初始化會員卡數據
-let memberCards = JSON.parse(localStorage.getItem('familyMemberCards')) || [];
 
 // 顯示彈窗
 function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
 function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
 
 // 儲存新卡
-function saveNewCard() {
+async function saveNewCard() {
     const name = document.getElementById('newCardName').value;
     const file = document.getElementById('newCardImg').files[0];
 
     if (!name || !file) return alert('Please enter name and select photo!');
 
+    showLoading(true);
     const reader = new FileReader();
-    reader.onload = function(e) {
-        const newCard = {
-            id: Date.now(),
+    reader.onload = async function(e) {
+        const payload = {
+            action: 'add_card',
             name: name,
-            img: e.target.result // 儲存 Base64 圖片
+            img: e.target.result // Base64 圖片字串
         };
-        memberCards.push(newCard);
-        localStorage.setItem('familyMemberCards', JSON.stringify(memberCards));
-        renderCards();
-        closeModal();
-        // 清空輸入框
-        document.getElementById('newCardName').value = '';
-        document.getElementById('newCardImg').value = '';
+        
+        try {
+            const resp = await fetch(API, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            
+            if (result.ok) {
+                closeModal();
+                document.getElementById('newCardName').value = '';
+                document.getElementById('newCardImg').value = '';
+                // 儲存成功後，重新去雲端攞最新數據
+                await fetchData(); 
+            }
+        } catch(err) {
+            alert('Save failed! / 儲存失敗');
+        }
+        showLoading(false);
     };
     reader.readAsDataURL(file);
 }
-
 // 渲染卡片列表 (含 A-Z 排序同搜尋)
 function renderCards() {
     const searchTerm = document.getElementById('cardSearch').value.toLowerCase();
     const list = document.getElementById('memberCardList');
     
-    // A-Z 排序邏輯
-    const filtered = memberCards
+    // 由雲端 state 攞料，並進行 A-Z 排序
+    const filtered = (state.cards || [])
         .filter(c => c.name.toLowerCase().includes(searchTerm))
         .sort((a, b) => a.name.localeCompare(b.name));
 
+    if (filtered.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No cards found</div>';
+        return;
+    }
+
     list.innerHTML = filtered.map(c => `
         <div class="member-card-item">
-            <button class="delete-card" onclick="deleteCard(${c.id})">×</button>
+            <button class="delete-card" onclick="deleteCard('${c.id}')">×</button>
             <img src="${c.img}" class="member-card-img" onclick="viewImage('${c.img}')">
             <div class="member-card-info">${c.name}</div>
         </div>
@@ -450,11 +477,23 @@ function renderCards() {
 }
 
 // 刪除卡片
-function deleteCard(id) {
-    if(!confirm('Delete this card?')) return;
-    memberCards = memberCards.filter(c => c.id !== id);
-    localStorage.setItem('familyMemberCards', JSON.stringify(memberCards));
-    renderCards();
+async function deleteCard(id) {
+    if(!confirm('Delete this card for everyone? / 確定要全家同步刪除？')) return;
+    
+    showLoading(true);
+    try {
+        const resp = await fetch(API, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete_card', id: id })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+            await fetchData(); // 重新整理雲端數據
+        }
+    } catch(e) {
+        alert('Delete failed! / 刪除失敗');
+    }
+    showLoading(false);
 }
 
 // 點擊放大相片 (簡單版)
