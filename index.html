@@ -89,6 +89,13 @@
     let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [] };
     let activeMember = 'Peter';
     let activeMonth = new Date().toISOString().slice(0, 7);
+    // 定義固定支出清單
+    const FIXED_ITEMS = [
+    { desc: 'Rent', amount: 1315.00, member: 'Peter' },
+    { desc: 'Council Tax', amount: 179.00, member: 'Peter' },
+    { desc: 'Sky Broadband', amount: 34.00, member: 'Peter' }
+    { desc: 'OVO', amount: 190.00, member: 'Peter' }
+];
 
     // 初始化
     window.onload = () => {
