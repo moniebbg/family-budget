@@ -298,14 +298,15 @@ input::-webkit-calendar-picker-indicator {
         clearingHtml += '</div>';
         document.getElementById('settleList').innerHTML = settleHtml + clearingHtml;
 
-        // 3. 渲染最近 5 條紀錄
-        const recent5 = [...state.expenses].reverse().slice(0, 5);
-        let recentHtml = recent5.map(e => `
-            <div class="recent-item">
-                <span><strong>${e.member}</strong>: ${e.desc}</span>
-                <span style="color:#555;">£${parseFloat(e.amount).toFixed(2)}</span>
-            </div>
-        `).join('');
+        // 3. 渲染最近 5 條紀錄 (項目 | 價錢 | 人名)
+const recent5 = [...state.expenses].reverse().slice(0, 5);
+let recentHtml = recent5.map(e => `
+    <div class="recent-item">
+        <span style="flex: 2;">${e.desc}</span>
+        <span style="flex: 1; text-align: right; font-weight: bold;">£${parseFloat(e.amount).toFixed(2)}</span>
+        <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
+    </div>
+`).join('');
         document.getElementById('recentList').innerHTML = recentHtml || '<p style="text-align:center;color:#ccc;">No records</p>';
     }
 
