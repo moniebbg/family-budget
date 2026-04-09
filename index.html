@@ -13,11 +13,35 @@
         .lang-sub { font-size: 0.8em; color: #8e8e93; display: block; }
         .month-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 15px; }
         .nav-btn { background: #e5e5ea; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
-        .member-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
-        .m-btn { background: #fff; border: 2px solid #e5e5ea; border-radius: 12px; padding: 10px 5px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .member-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); /* 自動計人數，唔夠位就換行 */
+    gap: 8px; 
+    margin-bottom: 20px; 
+}
+        .m-btn { 
+    background: #fff; 
+    border: 2px solid #e5e5ea; 
+    border-radius: 12px; 
+    padding: 10px 5px; 
+    text-align: center; 
+    cursor: pointer; 
+    transition: 0.2s;
+    min-width: 0; /* 防止掣入面啲字撐開個框 */
+}
         .m-btn.active { border-color: var(--p-color); background: #e7f3ff; font-weight: bold; }
         label { display: block; font-weight: 600; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
+        input { 
+    width: 100%; 
+    max-width: -webkit-fill-available; /* 關鍵：確保喺 iPhone 唔會爆框 */
+    padding: 12px; 
+    border: 1px solid #d1d1d6; 
+    border-radius: 8px; 
+    box-sizing: border-box; /* 確保 Padding 唔會撐大個框 */
+    font-size: 16px; 
+    margin: 0 0 10px 0; /* 確保冇左右 margin 影響對齊 */
+    display: block; 
+}
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--p-color); color: white; }
         .btn-ai { background: #34c759; color: white; }
