@@ -3,67 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family App</title>
+    <title>Family Expense 家庭分帳</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --p-color: #007aff; --bg: #f2f2f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .card { background: #fff; border-radius: 15px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .member-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
-        .m-btn { border: 2px solid #e5e5ea; border-radius: 10px; padding: 10px 2px; text-align: center; cursor: pointer; background: #fff; }
+        :root { --p-color: #007aff; --bg: #f2f2f7; --card: #ffffff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #1c1c1e; }
+        .card { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h2, h3 { margin: 0 0 10px 0; }
+        .lang-sub { font-size: 0.8em; color: #8e8e93; display: block; }
+        
+        /* 月份導航 */
+        .month-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 15px; }
+        .nav-btn { background: #e5e5ea; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
+
+        /* 成員選擇 */
+        .member-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .m-btn { background: #fff; border: 2px solid #e5e5ea; border-radius: 12px; padding: 10px 5px; text-align: center; cursor: pointer; transition: 0.2s; }
         .m-btn.active { border-color: var(--p-color); background: #e7f3ff; font-weight: bold; }
-        input { width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; }
-        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+
+        /* 輸入區 */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
+        
+        /* 按鈕風格 */
+        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--p-color); color: white; }
-        .btn-fix { background: #5856d6; color: white; }
-        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border-radius: 8px; margin-bottom: 5px; }
-        .del-btn { color: #ff3b30; border: none; background: none; font-weight: bold; cursor: pointer; }
+        .btn-ai { background: #34c759; color: white; }
+        .btn-export { background: #8e8e93; color: white; font-size: 13px; padding: 8px; }
+
+        /* 結算清單 */
+        .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f2f2f7; }
+        .status-tag { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .tag-plus { background: #eafaf1; color: #2ecc71; }
+        .tag-minus { background: #fef1f1; color: #e74c3c; }
+
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
     </style>
 </head>
 <body>
 
-<div id="loading">處理中...</div>
+<div id="loading">處理中... / Processing...</div>
 
-<div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <button onclick="changeMonth(-1)">◀</button>
-        <h3 id="curMonthText" style="margin:0"></h3>
-        <button onclick="changeMonth(1)">▶</button>
+<div class="month-nav">
+    <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+    <div style="text-align: center;">
+        <h3 id="curMonthText">2026-04</h3>
+        <span class="lang-sub">Month / 月份</span>
     </div>
-    <h2 id="totalDisplay" style="text-align:center; margin:15px 0;">£0.00</h2>
-    <div id="settleList"></div>
+    <button class="nav-btn" onclick="changeMonth(1)">▶</button>
 </div>
 
 <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div>
+            <h2 id="totalDisplay">£0.00</h2>
+            <span class="lang-sub">Total Spent / 本月總開支</span>
+        </div>
+        <button class="btn-export" onclick="exportToExcel()">Excel ⬇</button>
+    </div>
+    <div id="settleList" style="margin-top:15px;"></div>
+</div>
+
+<div class="card">
+    <label>Who paid? / 邊個俾錢？</label>
     <div class="member-grid" id="memberBtns"></div>
+
+    <label>Date / 日期</label>
     <input type="date" id="iptDate">
-    <input type="text" id="iptDesc" placeholder="買咗乜 / Description">
-    <input type="number" id="iptAmt" step="0.01" placeholder="金額 / Amount (£)">
-    
+
+    <label>Description / 買咗乜</label>
+    <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
+
+    <label>Amount / 金額 (£)</label>
+    <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
+
+    <button class="btn btn-ai" onclick="triggerAI()">📷 AI Scan / 掃描收據</button>
     <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
-    <button class="btn btn-fix" onclick="addFixedExpenses()">➕ 一鍵加入固定支出 (Rent/Tax)</button>
 </div>
 
-<div class="card">
-    <h3>Recent / 最近紀錄 (可刪除)</h3>
-    <div id="historyList"></div>
-</div>
+<input type="file" id="aiFile" accept="image/*" style="display:none" onchange="processAI(this)">
 
 <script>
-    const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec'; 
+    const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec'; // <--- 貼上你的 URL
     let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [] };
     let activeMember = 'Peter';
     let activeMonth = new Date().toISOString().slice(0, 7);
 
-    // 固定支出清單 (可在這裏修改)
-    const FIXED_ITEMS = [
-        { desc: 'Rent', amount: 1315, member: 'Peter' },
-        { desc: 'Council Tax', amount: 179, member: 'Peter' }
-        { desc: 'Sky Broadband', amount: 34, member: 'Peter' 
-        { desc: 'OVO', amount: 190, member: 'Peter' }
-    ];
-
+    // 初始化
     window.onload = () => {
         document.getElementById('iptDate').value = new Date().toISOString().slice(0, 10);
         renderMembers();
@@ -71,10 +98,15 @@
     };
 
     function renderMembers() {
-        document.getElementById('memberBtns').innerHTML = state.members.map(m => 
-            `<div class="m-btn ${m === activeMember ? 'active' : ''}" onclick="activeMember='${m}';renderMembers();">${m}</div>`
-        ).join('');
+        const html = state.members.map(m => `
+            <div class="m-btn ${m === activeMember ? 'active' : ''}" onclick="setMember('${m}')">
+                ${m}
+            </div>
+        `).join('');
+        document.getElementById('memberBtns').innerHTML = html;
     }
+
+    function setMember(m) { activeMember = m; renderMembers(); }
 
     async function fetchData() {
         showLoading(true);
@@ -82,78 +114,32 @@
             const r = await fetch(API);
             const j = await r.json();
             state.expenses = j.data.expenses;
-            renderAll();
-        } catch(e) { alert('Load Error'); }
+            renderSummary();
+        } catch(e) { alert('Error loading data'); }
         showLoading(false);
     }
 
-    function renderAll() {
+    function renderSummary() {
         document.getElementById('curMonthText').innerText = activeMonth;
         const monthly = state.expenses.filter(e => e.month === activeMonth);
         const total = monthly.reduce((s, e) => s + e.amount, 0);
         const each = total / 4;
+        
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
-        // 渲染結算
-        document.getElementById('settleList').innerHTML = state.members.map(m => {
+        let settleHtml = '';
+        state.members.forEach(m => {
             const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + e.amount, 0);
             const bal = paid - each;
-            return `<div style="display:flex; justify-content:space-between; padding:5px 0;">
-                <span>${m}</span>
-                <span>${bal >= 0 ? '收' : '補'} £${Math.abs(bal).toFixed(2)}</span>
-            </div>`;
-        }).join('');
-
-        // 渲染歷史紀錄 (最近 10 條)
-        const recent = [...state.expenses].reverse().slice(0, 10);
-        document.getElementById('historyList').innerHTML = recent.map(e => `
-            <div class="item-row">
-                <span><b>${e.member}</b>: £${e.amount} (${e.desc})</span>
-                <button class="del-btn" onclick="deleteItem('${e.id}')">❌</button>
-            </div>
-        `).join('');
-    }
-
-    // 批量入數功能 (固定支出)
-    async function addFixedExpenses() {
-        if(!confirm('確定加入本月固定支出？')) return;
-        showLoading(true);
-        const date = document.getElementById('iptDate').value;
-        const items = FIXED_ITEMS.map(f => ({
-            ...f, id: 'fix-'+Date.now()+Math.random(), month: activeMonth, date: date
-        }));
-        
-        await fetch(API, { method: 'POST', body: JSON.stringify({ action: 'add_batch', items: items }) });
-        state.expenses.push(...items);
-        renderAll();
-        showLoading(false);
-        alert('固定支出已同步！');
-    }
-
-    async function submitData() {
-        const desc = document.getElementById('iptDesc').value;
-        const amt = parseFloat(document.getElementById('iptAmt').value);
-        const date = document.getElementById('iptDate').value;
-        if(!desc || !amt) return alert('請輸入完整');
-        
-        showLoading(true);
-        const newItem = { id: 'temp-'+Date.now(), member: activeMember, desc, amount: amt, month: date.slice(0,7), date };
-        
-        await fetch(API, { method: 'POST', body: JSON.stringify({ action: 'add_batch', items: [newItem] }) });
-        state.expenses.push(newItem);
-        renderAll();
-        document.getElementById('iptDesc').value = '';
-        document.getElementById('iptAmt').value = '';
-        showLoading(false);
-    }
-
-    async function deleteItem(id) {
-        if(!confirm('確定刪除？')) return;
-        showLoading(true);
-        await fetch(API, { method: 'POST', body: JSON.stringify({ action: 'delete', id: id }) });
-        state.expenses = state.expenses.filter(e => e.id !== id);
-        renderAll();
-        showLoading(false);
+            settleHtml += `
+                <div class="summary-item">
+                    <span>${m} <span class="lang-sub">Paid £${paid.toFixed(2)}</span></span>
+                    <span class="status-tag ${bal >= 0 ? 'tag-plus' : 'tag-minus'}">
+                        ${bal >= 0 ? 'Recv / 收' : 'Pay / 補'} £${Math.abs(bal).toFixed(2)}
+                    </span>
+                </div>`;
+        });
+        document.getElementById('settleList').innerHTML = settleHtml;
     }
 
     function changeMonth(step) {
@@ -161,9 +147,65 @@
         m += step;
         if(m > 12) { y++; m=1; } else if(m < 1) { y--; m=12; }
         activeMonth = `${y}-${String(m).padStart(2, '0')}`;
-        renderAll();
+        renderSummary();
     }
-    function showLoading(s) { document.getElementById('loading').style.display = s ? 'flex' : 'none'; }
+
+    async function submitData() {
+        const desc = document.getElementById('iptDesc').value;
+        const amt = parseFloat(document.getElementById('iptAmt').value);
+        if(!desc || !amt) return alert('Please fill in / 請填寫完整');
+        
+        showLoading(true);
+        const item = {
+            member: activeMember,
+            desc: desc,
+            amount: amt,
+            month: activeMonth,
+            date: document.getElementById('iptDate').value
+        };
+        
+        await fetch(API, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'add_batch', items: [item] })
+        });
+        
+        location.reload();
+    }
+
+    function triggerAI() { document.getElementById('aiFile').click(); }
+
+    async function processAI(input) {
+        if(!input.files[0]) return;
+        showLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1];
+            const resp = await fetch(API, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'scan_receipt', base64: base64 })
+            });
+            const res = await resp.json();
+            if(res.ok) {
+                // 簡易 AI 邏輯：搵文字入面最後一個金額格式
+                const matches = res.text.match(/\d+\.\d{2}/g);
+                if(matches) document.getElementById('iptAmt').value = matches[matches.length-1];
+                document.getElementById('iptDesc').value = "[AI Scan] Check detail";
+                alert('Scan Success! Please verify amount.\n掃描成功！請核對金額。');
+            } else { alert('Scan failed / 掃描失敗'); }
+            showLoading(false);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    function exportToExcel() {
+        const monthly = state.expenses.filter(e => e.month === activeMonth);
+        const ws = XLSX.utils.json_to_sheet(monthly);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+        XLSX.writeFile(wb, `Family_Expenses_${activeMonth}.xlsx`);
+    }
+
+    function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 </script>
 </body>
 </html>
