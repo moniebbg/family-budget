@@ -6,6 +6,33 @@
     <title>Family Expense 家庭分帳</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* 全銀幕放大圖層 */
+.img-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+.img-overlay img {
+    max-width: 95%;
+    max-height: 85%;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+.img-overlay .close-tip {
+    position: absolute;
+    bottom: 30px;
+    color: white;
+    font-size: 14px;
+    background: rgba(255,255,255,0.2);
+    padding: 5px 15px;
+    border-radius: 20px;
+}
         :root { --p-color: #007aff; --bg: #f2f2f7; --card: #ffffff; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px 15px 100px 15px; color: #1c1c1e; }
         .card { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
@@ -413,19 +440,26 @@ input::-webkit-calendar-picker-indicator {
     }).catch(e => console.error("Sync failed", e));
 }
 
-    async function addFixedExpenses() {
-        if(!confirm('Confirm adding fixed expenses?')) return;
-        const date = document.getElementById('iptDate').value;
-        const month = date.slice(0, 7);
-        showLoading(true);
-        try {
-            await fetch(API, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
-            });
-            location.reload();
-        } catch(e) { alert('Save failed'); showLoading(false); }
+    aasync function addFixedExpenses() {
+    if(!confirm('Confirm adding fixed expenses?')) return;
+    const date = document.getElementById('iptDate').value;
+    const month = date.slice(0, 7);
+    
+    showLoading(true);
+    try {
+        const resp = await fetch(API, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
+        });
+        const result = await resp.json();
+        if(result.ok) {
+            await fetchData(); // 唔使 reload，直接攞新數據
+        }
+    } catch(e) { 
+        alert('Save failed'); 
     }
+    showLoading(false);
+}
 
     function showPage(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -438,14 +472,46 @@ input::-webkit-calendar-picker-indicator {
 
     function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 
-    function exportToExcel() {
-        const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
-        const ws = XLSX.utils.json_to_sheet(monthly);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Expenses");
-        XLSX.writeFile(wb, `Family_Expenses_${activeMonth}.xlsx`);
+   function exportToExcel() {
+    // 1. 篩選目前頁面顯示緊嗰個月嘅數據
+    // 注意：呢度 e.month 要跟返你 Google Sheet 嘅細楷 "month"
+    const monthly = state.expenses.filter(e => {
+        const eMonth = e.month ? String(e.month).slice(0, 7) : "";
+        return eMonth === activeMonth;
+    });
+
+    if (monthly.length === 0) return alert('No data for this month!');
+
+    // 2. 依照你 Record2 幅圖嘅順序：Member, Desc, Amount, Date
+    // 呢度係關鍵：左邊係 Excel 顯示嘅名，右邊 e.xxx 係跟返你 Sheet 頂行個名
+    const cleanData = monthly.map(e => ({
+        'Member': e.member || '',
+        'Desc': e.desc || '',
+        'Amount': cleanNumber(e.amount), 
+        'Date': e.date || ''
+    }));
+
+    // 3. 轉做 Excel 工作表
+    const ws = XLSX.utils.json_to_sheet(cleanData);
+
+    // 4. 設定 Excel 格式：將 Amount 嗰行 (C 欄) 變做英鎊格式
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let i = range.s.r + 1; i <= range.e.r; ++i) {
+        const cell = ws[XLSX.utils.encode_cell({r: i, c: 2})]; // 第 3 欄 (C) 是 Amount
+        if (cell) {
+            cell.t = 'n'; 
+            cell.z = '£#,##0.00'; 
+        }
     }
 
+    // 5. 設定闊度
+    ws['!cols'] = [{wch: 12}, {wch: 25}, {wch: 12}, {wch: 15}];
+
+    // 6. 輸出檔案
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Monthly Report");
+    XLSX.writeFile(wb, `Expense_Report_${activeMonth}.xlsx`);
+}
     function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
 
@@ -530,10 +596,22 @@ async function saveNewCard() {
         showLoading(false);
     }
 
-    function viewImage(src) {
-        const win = window.open("");
-        win.document.write(`<img src="${src}" style="width:100%; height:auto;">`);
-    }
+    // 放大張相
+function viewImage(src) {
+    const overlay = document.getElementById('fullImageOverlay');
+    const fullImg = document.getElementById('fullImageTag');
+    fullImg.src = src;
+    overlay.style.display = 'flex';
+}
+
+// 閂咗佢
+function closeImage() {
+    document.getElementById('fullImageOverlay').style.display = 'none';
+}
 </script>
+<div id="fullImageOverlay" class="img-overlay" onclick="closeImage()">
+    <img id="fullImageTag" src="">
+    <div class="close-tip">Click anywhere to close / 撳任何位置關閉</div>
+</div>
 </body>
 </html>
