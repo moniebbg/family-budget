@@ -449,28 +449,53 @@ input::-webkit-calendar-picker-indicator {
     function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
 
-    async function saveNewCard() {
-        const name = document.getElementById('newCardName').value;
-        const file = document.getElementById('newCardImg').files[0];
-        if (!name || !file) return alert('Please enter name and select photo!');
-        showLoading(true);
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const resp = await fetch(API, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'add_card', name: name, img: e.target.result })
-                });
-                const result = await resp.json();
+async function saveNewCard() {
+    const name = document.getElementById('newCardName').value;
+    const file = document.getElementById('newCardImg').files[0];
+    if (!name || !file) return alert('Please enter name and select photo!');
+    
+    showLoading(true);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // --- 壓縮邏輯 ---
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 600; // 限制闊度 600px，已經夠睇清 Barcode
+            let width = img.width;
+            let height = img.height;
+
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // 轉返做細 Size 嘅 Base64 (品質 0.7)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // 傳送去 Google
+            fetch(API, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'add_card', name: name, img: compressedBase64 })
+            }).then(r => r.json()).then(result => {
                 if (result.ok) {
                     closeModal();
-                    await fetchData();
+                    fetchData(); // 靜靜雞更新本地資料
                 }
-            } catch(err) { alert('Save failed!'); }
-            showLoading(false);
+                showLoading(false);
+            }).catch(err => {
+                alert('Save failed!');
+                showLoading(false);
+            });
         };
-        reader.readAsDataURL(file);
-    }
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
 
     function renderCards() {
         const searchTerm = document.getElementById('cardSearch').value.toLowerCase();
