@@ -34,17 +34,16 @@
         input { 
     width: 100%; 
     max-width: -webkit-fill-available; 
-    padding: 12px; 
+    padding: 12px 5px; /* 縮減左右 padding */
     border: 1px solid #d1d1d6; 
     border-radius: 8px; 
     box-sizing: border-box; 
     font-size: 16px; 
-    margin: 0 0 10px 0; 
+    margin-bottom: 10px; 
     display: block; 
-    
-    /* 加入下面呢幾行來解決置中問題 */
     text-align: center; 
-    appearance: none; /* 去除瀏覽器預設樣式 */
+    background-color: #ffffff; /* 強制背景白色 */
+    color: #1c1c1e;            /* 強制字體深色 */
     -webkit-appearance: none; 
 }
 
@@ -115,23 +114,24 @@ input::-webkit-calendar-picker-indicator {
             border-bottom: 1px solid #f2f2f7;
             font-size: 14px;
         }
-        /* 深色模式支援 */
-        @media (prefers-color-scheme: dark) {
-            :root { 
-                --bg: #1c1c1e; 
-                --card: #2c2c2e; 
-            }
-            body { color: #ffffff; }
-            .card { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-            .month-nav, .bottom-nav { background: #1c1c1e; border-bottom: 1px solid #38383a; }
-            .nav-btn, .m-btn { background: #3a3a3c; border-color: #48484a; color: white; }
-            input { background: #3a3a3c; border-color: #48484a; color: white; }
-            .recent-item, .summary-item { border-bottom-color: #38383a; }
-            .lang-sub { color: #aeaeb2; }
-        }
+    
         /* 會員卡版面專用樣式 */
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.add-btn { background: var(--p-color); color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+.add-btn {
+    background: var(--p-color);
+    color: white;
+    border: none;
+    width: 36px; 
+    height: 36px;
+    border-radius: 50%;
+    font-size: 26px;
+    cursor: pointer;
+    display: inline-flex; /* 改用 inline-flex */
+    align-items: center;
+    justify-content: center;
+    line-height: 0;      /* 強制行高歸零 */
+    padding: 0 0 4px 0;  /* 視覺微調：加少少底距令個 + 望落更正中 */
+}
 .search-bar { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d1d6; margin-bottom: 15px; box-sizing: border-box; }
 .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .member-card-item { background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5ea; position: relative; }
@@ -150,9 +150,9 @@ input::-webkit-calendar-picker-indicator {
 <div id="page-mark" class="page active">
     <div class="month-nav">
         <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
-        <div style="text-align: center;">
-            <h3 class="curMonthText">2026-04</h3>
-            <span class="lang-sub">Month / 月份</span>
+        <div style="flex: 1; text-align: center;">
+            <h3 class="curMonthText" style="margin:0;">2026-04</h3>
+             <span class="lang-sub">Month / 月份</span>
         </div>
         <button class="nav-btn" onclick="changeMonth(1)">▶</button>
     </div>
