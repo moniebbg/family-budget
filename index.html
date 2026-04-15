@@ -165,7 +165,7 @@ input::-webkit-calendar-picker-indicator {
         <label>Description / 買咗乜</label>
         <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
        <label>Amount / 金額 (£)</label>
-        <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
+        <input type="number" id="iptAmt" step="0.01" placeholder="0.00" inputmode="decimal">
 
         <button class="btn" style="background:#5856d6; color:white;" onclick="addFixedExpenses()">➕ 一鍵加入固定支出</button>
         <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
@@ -378,37 +378,40 @@ input::-webkit-calendar-picker-indicator {
     }
 
     async function submitData() {
-        const desc = document.getElementById('iptDesc').value;
-        const amt = parseFloat(document.getElementById('iptAmt').value);
-        const date = document.getElementById('iptDate').value;
+    const desc = document.getElementById('iptDesc').value;
+    const amt = parseFloat(document.getElementById('iptAmt').value);
+    const date = document.getElementById('iptDate').value;
 
-        if(!desc || isNaN(amt)) return alert('Please fill in');
-        
-        // --- 極速邏輯：唔等 Google，先清空畫面話 OK ---
-        alert('Success / 已收到！背後處理中...'); 
-        
-        // 準備數據
-        const item = {
-            member: activeMember, 
-            desc: desc, 
-            amount: amt,
-            month: date.slice(0, 7), 
-            date: date
-        };
+    if(!desc || isNaN(amt)) return alert('Please fill in');
 
-        // 清空輸入框，方便入下一條
-        document.getElementById('iptDesc').value = '';
-        document.getElementById('iptAmt').value = '';
+    // 1. 準備數據物件
+    const item = {
+        member: activeMember, 
+        desc: desc, 
+        amount: amt,
+        month: date.slice(0, 7), 
+        date: date
+    };
 
-        // 背後傳送 (唔加 await，唔等佢完)
-        fetch(API, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'add_batch', items: [item] })
-        }).then(() => {
-            console.log("Background sync done.");
-            // 如果你想佢靜靜雞更新數據，可以喺度加 fetchData();
-        });
-    }
+    // 2. 極速反應：即刻清空輸入框，唔好等 API
+    document.getElementById('iptDesc').value = '';
+    document.getElementById('iptAmt').value = '';
+    
+    // 3. 直接更新本地嘅「最近紀錄」，令你覺得「入咗喇」
+    state.expenses.push(item); 
+    renderSummary(); 
+
+    // 4. 背後傳送 (唔用 await，唔顯示「處理中」，靜靜雞傳)
+    fetch(API, {
+        method: 'POST',
+        mode: 'no-cors', // 加入呢行可以避開部分連線延遲感
+        body: JSON.stringify({ action: 'add_batch', items: [item] })
+    }).then(() => {
+        console.log("Background sync done.");
+        // 5. 隔 2 秒後靜靜雞喺背後 refresh 一次數據，確保同步
+        setTimeout(fetchData, 2000);
+    }).catch(e => console.error("Sync failed", e));
+}
 
     async function addFixedExpenses() {
         if(!confirm('Confirm adding fixed expenses?')) return;
