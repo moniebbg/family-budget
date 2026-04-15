@@ -241,7 +241,12 @@ input::-webkit-calendar-picker-indicator {
 <input type="file" id="aiFile" accept="image/*" style="display:none" onchange="processAI(this)">
 <script>
     const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec';
-    let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [], cards: [] };
+    
+    let state = { 
+        members: ['Peter', 'Alice', 'Bryan', 'Monie'], 
+        expenses: [], 
+        cards: [] 
+    };
     let activeMember = 'Peter';
     let activeMonth = new Date().toISOString().slice(0, 7);
 
@@ -251,6 +256,16 @@ input::-webkit-calendar-picker-indicator {
         { desc: 'Sky Broadband', amount: 34.00, member: 'Peter' },
         { desc: 'OVO', amount: 190.00, member: 'Peter' }
     ];
+
+    // 【最強保險】數字清理函數
+    function cleanNumber(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        if (typeof val === 'number') return val;
+        // 剷走所有非數字同非點號嘅嘢 (例如 £, 字串, 逗號)
+        const s = String(val).replace(/[^0-9.]/g, '');
+        const num = parseFloat(s);
+        return isNaN(num) ? 0 : num;
+    }
 
     window.onload = () => {
         document.getElementById('iptDate').value = new Date().toISOString().slice(0, 10);
@@ -272,6 +287,7 @@ input::-webkit-calendar-picker-indicator {
         try {
             const r = await fetch(API + '?nocache=' + Date.now());
             const j = await r.json();
+            console.log("Raw data from Google:", j); // Debug 用，喺電腦掣 F12 睇到
             if (j.ok) {
                 state.expenses = j.data.expenses || [];
                 state.cards = j.data.cards || [];
@@ -288,17 +304,15 @@ input::-webkit-calendar-picker-indicator {
     function renderSummary() {
         document.querySelectorAll('.curMonthText').forEach(el => el.innerText = activeMonth);
         
-        const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
-        
-        // 統一清理數字邏輯
-        const cleanNumber = (val) => {
-            if (val === null || val === undefined) return 0;
-            const s = String(val).replace(/[^0-9.]/g, ''); 
-            return parseFloat(s) || 0;
-        };
+        // 篩選本月數據
+        const monthly = state.expenses.filter(e => {
+            const eMonth = e.month ? String(e.month).slice(0, 7) : "";
+            return eMonth === activeMonth;
+        });
 
         const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
         const each = total / state.members.length;
+        
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
         let settleHtml = `<p style="margin-bottom:10px; font-weight:bold; color:var(--p-color);">Per Person / 每人應付: £${each.toFixed(2)}</p>`;
@@ -312,13 +326,13 @@ input::-webkit-calendar-picker-indicator {
             settleHtml += `
                 <div class="summary-item">
                     <span>${m} <span class="lang-sub">Paid £${paid.toFixed(2)}</span></span>
-                    <span class="status-tag ${bal >= 0 ? 'tag-plus' : 'tag-minus'}">
-                        ${bal >= 0 ? 'Recv / 收' : 'Pay / 補'} £${Math.abs(bal).toFixed(2)}
+                    <span class="status-tag ${bal >= -0.01 ? 'tag-plus' : 'tag-minus'}">
+                        ${bal >= -0.01 ? 'Recv / 收' : 'Pay / 補'} £${Math.abs(bal).toFixed(2)}
                     </span>
                 </div>`;
         });
 
-        // 轉帳建議
+        // 轉帳建議邏輯
         let clearingHtml = '<div style="margin-top:20px; border-top:2px dashed #e5e5ea; padding-top:15px;"><h3>Suggested Payments</h3>';
         let debtors = memberBalances.filter(m => m.balance < -0.01).sort((a, b) => a.balance - b.balance);
         let creditors = memberBalances.filter(m => m.balance > 0.01).sort((a, b) => b.balance - a.balance);
@@ -326,12 +340,13 @@ input::-webkit-calendar-picker-indicator {
         if (debtors.length === 0) {
             clearingHtml += '<p style="color:#8e8e93;">All settled!</p>';
         } else {
+            let tempCreditors = creditors.map(c => ({...c}));
             debtors.forEach(d => {
                 let debt = Math.abs(d.balance);
-                creditors.forEach(c => {
-                    if (debt > 0 && c.balance > 0) {
+                tempCreditors.forEach(c => {
+                    if (debt > 0.01 && c.balance > 0.01) {
                         let amount = Math.min(debt, c.balance);
-                        clearingHtml += `<p style="font-size:14px; margin:5px 0;">💸 <strong>${d.name}</strong> ➔ <strong>${c.name}</strong>: £${amount.toFixed(2)}</p>`;
+                        clearingHtml += `<p style="font-size:14px; margin:5px 0;">💸 <strong>${d.name}</strong> ➔ <strong>${c.name}</strong>: <span style="color:#e74c3c;font-weight:bold;">£${amount.toFixed(2)}</span></p>`;
                         debt -= amount;
                         c.balance -= amount;
                     }
@@ -341,13 +356,13 @@ input::-webkit-calendar-picker-indicator {
         clearingHtml += '</div>';
         document.getElementById('settleList').innerHTML = settleHtml + clearingHtml;
 
-        // 最近紀錄 (使用 cleanNumber)
+        // 最近 5 條紀錄
         const recent5 = [...state.expenses].reverse().slice(0, 5);
         let recentHtml = recent5.map(e => `
             <div class="recent-item">
-                <span style="flex: 2;">${e.desc}</span>
+                <span style="flex: 2;">${e.desc || 'No Desc'}</span>
                 <span style="flex: 1; text-align: right; font-weight: bold;">£${cleanNumber(e.amount).toFixed(2)}</span>
-                <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
+                <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member || 'Unknown'}</span>
             </div>
         `).join('');
         document.getElementById('recentList').innerHTML = recentHtml || '<p style="text-align:center;color:#ccc;">No records</p>';
@@ -364,17 +379,20 @@ input::-webkit-calendar-picker-indicator {
     async function submitData() {
         const desc = document.getElementById('iptDesc').value;
         const amt = parseFloat(document.getElementById('iptAmt').value);
-        if(!desc || !amt) return alert('Please fill in');
+        const date = document.getElementById('iptDate').value;
+        if(!desc || isNaN(amt)) return alert('Please fill in');
         showLoading(true);
         const item = {
             member: activeMember, desc: desc, amount: amt,
-            month: activeMonth, date: document.getElementById('iptDate').value
+            month: date.slice(0, 7), date: date
         };
-        await fetch(API, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'add_batch', items: [item] })
-        });
-        location.reload();
+        try {
+            await fetch(API, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'add_batch', items: [item] })
+            });
+            location.reload();
+        } catch(e) { alert('Save failed'); showLoading(false); }
     }
 
     async function addFixedExpenses() {
