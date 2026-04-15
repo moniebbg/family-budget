@@ -294,17 +294,26 @@ input::-webkit-calendar-picker-indicator {
         document.querySelectorAll('.curMonthText').forEach(el => el.innerText = activeMonth);
         
         const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
-        const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const each = total / state.members.length;
         
+        // 修正 1：計 Total 時先剷走 £ 同埋逗號
+        const total = monthly.reduce((s, e) => {
+            const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
+            return s + (parseFloat(cleanAmt) || 0);
+        }, 0);
+        
+        const each = total / state.members.length;
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
-        // 1. 渲染結算表 & 準備清算數據
         let settleHtml = `<p style="margin-bottom:10px; font-weight:bold; color:var(--p-color);">Per Person / 每人應付: £${each.toFixed(2)}</p>`;
         let memberBalances = [];
 
         state.members.forEach(m => {
-            const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+            // 修正 2：計個人已付時同樣剷走符號
+            const paid = monthly.filter(e => e.member === m).reduce((s, e) => {
+                const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
+                return s + (parseFloat(cleanAmt) || 0);
+            }, 0);
+            
             const bal = paid - each;
             memberBalances.push({ name: m, balance: bal });
 
@@ -317,7 +326,6 @@ input::-webkit-calendar-picker-indicator {
                 </div>`;
         });
 
-        // 2. 計算「邊個畀錢邊個」(Clearing House Algorithm)
         let clearingHtml = '<div style="margin-top:20px; border-top:2px dashed #e5e5ea; padding-top:15px;"><h3>Suggested Payments / 轉帳建議</h3>';
         let debtors = memberBalances.filter(m => m.balance < -0.01).sort((a, b) => a.balance - b.balance);
         let creditors = memberBalances.filter(m => m.balance > 0.01).sort((a, b) => b.balance - a.balance);
@@ -340,18 +348,19 @@ input::-webkit-calendar-picker-indicator {
         clearingHtml += '</div>';
         document.getElementById('settleList').innerHTML = settleHtml + clearingHtml;
 
-        // 3. 渲染最近 5 條紀錄 (項目 | 價錢 | 人名)
-const recent5 = [...state.expenses].reverse().slice(0, 5);
-let recentHtml = recent5.map(e => `
-    <div class="recent-item">
-        <span style="flex: 2;">${e.desc}</span>
-        <span style="flex: 1; text-align: right; font-weight: bold;">£${parseFloat(e.amount).toFixed(2)}</span>
-        <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
-    </div>
-`).join('');
+        // 修正 3：渲染最近紀錄時剷走符號
+        const recent5 = [...state.expenses].reverse().slice(0, 5);
+        let recentHtml = recent5.map(e => {
+            const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
+            return `
+                <div class="recent-item">
+                    <span style="flex: 2;">${e.desc}</span>
+                    <span style="flex: 1; text-align: right; font-weight: bold;">£${parseFloat(cleanAmt).toFixed(2)}</span>
+                    <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
+                </div>`;
+        }).join('');
         document.getElementById('recentList').innerHTML = recentHtml || '<p style="text-align:center;color:#ccc;">No records</p>';
     }
-
     function changeMonth(step) {
         let [y, m] = activeMonth.split('-').map(Number);
         m += step;
