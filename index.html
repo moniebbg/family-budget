@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Expense 家庭分帳</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
         /* 全銀幕放大圖層 */
 .img-overlay {
@@ -219,7 +221,7 @@ input::-webkit-calendar-picker-indicator {
                 <h2 id="totalDisplay">£0.00</h2>
                 <span class="lang-sub">Total Spent / 本月總開支</span>
             </div>
-            <button class="btn-export" onclick="exportToExcel()">Excel ⬇</button>
+            <button class="btn-export" style="background:#007aff;" onclick="exportToPDF()">PDF ⬇</button>
         </div>
         <div id="settleList" style="margin-top:15px;"></div>
     </div>
@@ -476,53 +478,56 @@ input::-webkit-calendar-picker-indicator {
 
     function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 
-   function exportToExcel() {
-    // 1. 認返 App 畫面目前顯示緊邊個月份 (activeMonth)
+   async function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // 1. 根據 activeMonth 篩選數據
     const monthly = state.expenses.filter(e => {
         const eMonth = e.month ? String(e.month).slice(0, 7) : "";
         return eMonth === activeMonth;
     });
 
-    if (monthly.length === 0) return alert('No data for this month!');
+    if (monthly.length === 0) return alert('呢個月冇數據！');
 
+    // 2. 計算總數同每人應付 (除 4)
     const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
-    const perPerson = total / 4;
+    const perPerson = (total / 4).toFixed(2);
 
-    // 2. 建立資料陣列 (第一行係 Header + 總數)
-    const wsData = [
-        ["Member", "Desc", "Amount", "Date", "", `Total (${activeMonth}): £${total.toFixed(2)}`], 
-        ["", "", "", "", "", `Per Person: £${perPerson.toFixed(2)}`], // F2 顯示每人應付
-        [] // 第三行留空，或者直接開始入數據
-    ];
+    // --- 頂部排版 ---
+    // A-F 跨行居中：顯示月份
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(activeMonth, 105, 15, { align: "center" });
 
-    // 3. 加入該月份的所有開支紀錄
-    monthly.forEach(e => {
-        wsData.push([
-            e.member || e.Member || '',
-            e.desc || e.Desc || '',
-            cleanNumber(e.amount || e.Amount),
-            e.date || e.Date || ''
-        ]);
+    // F 欄位置 (靠右)：顯示 Total 同 Per Person
+    doc.setFontSize(11);
+    doc.text(`Total : £${total.toFixed(2)}`, 196, 25, { align: "right" });
+    doc.text(`Per Person: £${perPerson}`, 196, 31, { align: "right" });
+
+    // --- 表格數據 ---
+    const tableData = monthly.map(e => [
+        e.member || '',
+        e.desc || '',
+        `£${cleanNumber(e.amount).toFixed(2)}`,
+        e.date || ''
+    ]);
+
+    // --- 畫表 (A-D 欄) ---
+    doc.autoTable({
+        startY: 38,
+        head: [['Member', 'Description', 'Amount', 'Date']],
+        body: tableData,
+        theme: 'plain', 
+        headStyles: { textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1, lineColor: [200, 200, 200] },
+        styles: { fontSize: 10, cellPadding: 4, lineWidth: 0.1, lineColor: [230, 230, 230] },
+        columnStyles: {
+            2: { halign: 'right' } // Amount 靠右對齊
+        },
+        margin: { left: 14, right: 14 }
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // 4. 格式化 C 欄 (Amount) 變英鎊
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let i = 3; i <= range.e.r; ++i) { // 由第四行開始係數據
-        const cell = ws[XLSX.utils.encode_cell({r: i, c: 2})]; 
-        if (cell) {
-            cell.t = 'n'; 
-            cell.z = '£#,##0.00'; 
-        }
-    }
-
-    // 5. 設定闊度
-    ws['!cols'] = [{wch: 12}, {wch: 25}, {wch: 12}, {wch: 15}, {wch: 2}, {wch: 35}];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Monthly Report");
-    XLSX.writeFile(wb, `Expense_Report_${activeMonth}.xlsx`);
+    doc.save(`Expense_${activeMonth}.pdf`);
 }
     function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
