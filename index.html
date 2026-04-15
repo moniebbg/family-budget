@@ -438,28 +438,32 @@ input::-webkit-calendar-picker-indicator {
         // 5. 隔 2 秒後靜靜雞喺背後 refresh 一次數據，確保同步
         setTimeout(fetchData, 2000);
     }).catch(e => console.error("Sync failed", e));
-}
-
-    aasync function addFixedExpenses() {
-    if(!confirm('Confirm adding fixed expenses?')) return;
-    const date = document.getElementById('iptDate').value;
-    const month = date.slice(0, 7);
+} // <--- 確保呢個關閉括號喺度
     
-    showLoading(true);
-    try {
-        const resp = await fetch(API, {
+    async function addFixedExpenses() {
+        if(!confirm('Confirm adding fixed expenses?')) return;
+        const date = document.getElementById('iptDate').value;
+        const month = date.slice(0, 7);
+        
+        showLoading(true);
+        // 呢度改用 no-cors 模式發送，唔去等 Google 回傳結果，直接當成功
+        fetch(API, {
             method: 'POST',
+            mode: 'no-cors',
             body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
+        }).then(() => {
+            // 停 2 秒等 Google 嗰邊處理完，再 refresh 畫面
+            setTimeout(async () => {
+                await fetchData();
+                showLoading(false);
+                alert('Fixed expenses added!');
+            }, 2000);
+        }).catch(e => {
+            console.error(e);
+            showLoading(false);
+            alert('Save failed');
         });
-        const result = await resp.json();
-        if(result.ok) {
-            await fetchData(); // 唔使 reload，直接攞新數據
-        }
-    } catch(e) { 
-        alert('Save failed'); 
     }
-    showLoading(false);
-}
 
     function showPage(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -485,10 +489,10 @@ input::-webkit-calendar-picker-indicator {
     // 2. 依照你 Record2 幅圖嘅順序：Member, Desc, Amount, Date
     // 呢度係關鍵：左邊係 Excel 顯示嘅名，右邊 e.xxx 係跟返你 Sheet 頂行個名
     const cleanData = monthly.map(e => ({
-        'Member': e.member || '',
-        'Desc': e.desc || '',
-        'Amount': cleanNumber(e.amount), 
-        'Date': e.date || ''
+        'Member': e.Member || e.member || '',
+        'Desc': e.Desc || e.desc || '',
+        'Amount': cleanNumber(e.Amount || e.amount),
+        'Date': e.Date || e.date || ''
     }));
 
     // 3. 轉做 Excel 工作表
