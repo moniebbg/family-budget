@@ -477,8 +477,7 @@ input::-webkit-calendar-picker-indicator {
     function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 
    function exportToExcel() {
-    // 1. 篩選目前頁面顯示緊嗰個月嘅數據
-    // 注意：呢度 e.month 要跟返你 Google Sheet 嘅細楷 "month"
+    // 1. 認返 App 畫面目前顯示緊邊個月份 (activeMonth)
     const monthly = state.expenses.filter(e => {
         const eMonth = e.month ? String(e.month).slice(0, 7) : "";
         return eMonth === activeMonth;
@@ -486,22 +485,32 @@ input::-webkit-calendar-picker-indicator {
 
     if (monthly.length === 0) return alert('No data for this month!');
 
-    // 2. 依照你 Record2 幅圖嘅順序：Member, Desc, Amount, Date
-    // 呢度係關鍵：左邊係 Excel 顯示嘅名，右邊 e.xxx 係跟返你 Sheet 頂行個名
-    const cleanData = monthly.map(e => ({
-        'Member': e.Member || e.member || '',
-        'Desc': e.Desc || e.desc || '',
-        'Amount': cleanNumber(e.Amount || e.amount),
-        'Date': e.Date || e.date || ''
-    }));
+    const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
+    const perPerson = total / 4;
 
-    // 3. 轉做 Excel 工作表
-    const ws = XLSX.utils.json_to_sheet(cleanData);
+    // 2. 建立資料陣列 (第一行係 Header + 總數)
+    const wsData = [
+        ["Member", "Desc", "Amount", "Date", "", `Total (${activeMonth}): £${total.toFixed(2)}`], 
+        ["", "", "", "", "", `Per Person: £${perPerson.toFixed(2)}`], // F2 顯示每人應付
+        [] // 第三行留空，或者直接開始入數據
+    ];
 
-    // 4. 設定 Excel 格式：將 Amount 嗰行 (C 欄) 變做英鎊格式
+    // 3. 加入該月份的所有開支紀錄
+    monthly.forEach(e => {
+        wsData.push([
+            e.member || e.Member || '',
+            e.desc || e.Desc || '',
+            cleanNumber(e.amount || e.Amount),
+            e.date || e.Date || ''
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // 4. 格式化 C 欄 (Amount) 變英鎊
     const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let i = range.s.r + 1; i <= range.e.r; ++i) {
-        const cell = ws[XLSX.utils.encode_cell({r: i, c: 2})]; // 第 3 欄 (C) 是 Amount
+    for (let i = 3; i <= range.e.r; ++i) { // 由第四行開始係數據
+        const cell = ws[XLSX.utils.encode_cell({r: i, c: 2})]; 
         if (cell) {
             cell.t = 'n'; 
             cell.z = '£#,##0.00'; 
@@ -509,9 +518,8 @@ input::-webkit-calendar-picker-indicator {
     }
 
     // 5. 設定闊度
-    ws['!cols'] = [{wch: 12}, {wch: 25}, {wch: 12}, {wch: 15}];
+    ws['!cols'] = [{wch: 12}, {wch: 25}, {wch: 12}, {wch: 15}, {wch: 2}, {wch: 35}];
 
-    // 6. 輸出檔案
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Monthly Report");
     XLSX.writeFile(wb, `Expense_Report_${activeMonth}.xlsx`);
