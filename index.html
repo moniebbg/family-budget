@@ -166,9 +166,6 @@ input::-webkit-calendar-picker-indicator {
         <input type="text" id="iptDesc" placeholder="e.g. Tesco, Rent, Dinner">
        <label>Amount / 金額 (£)</label>
         <input type="number" id="iptAmt" step="0.01" placeholder="0.00">
-        
-        <label>Receipt / 影低張單 (Optional)</label>
-        <input type="file" id="iptReceipt" accept="image/*" style="padding: 8px;">
 
         <button class="btn" style="background:#5856d6; color:white;" onclick="addFixedExpenses()">➕ 一鍵加入固定支出</button>
         <button class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
@@ -384,43 +381,33 @@ input::-webkit-calendar-picker-indicator {
         const desc = document.getElementById('iptDesc').value;
         const amt = parseFloat(document.getElementById('iptAmt').value);
         const date = document.getElementById('iptDate').value;
-        const receiptFile = document.getElementById('iptReceipt').files[0]; // 捉返張相
+        // 【剷走】const receiptFile = document.getElementById('iptReceipt').files[0];
 
         if(!desc || isNaN(amt)) return alert('Please fill in');
-
         showLoading(true);
 
-        let receiptBase64 = "";
-
-        // 【新增】處理相片轉碼
-        if (receiptFile) {
-            receiptBase64 = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(receiptFile);
-            });
-        }
+        // 【剷走所有處理相片轉 Base64 嘅 code】
+        // let receiptBase64 = "";
+        // if (receiptFile) {
+        //    ...
+        // }
 
         const item = {
             member: activeMember, 
             desc: desc, 
             amount: amt,
             month: date.slice(0, 7), 
-            date: date,
-            receipt: receiptBase64 // 將張相編碼傳埋返去
+            date: date
+            // 【剷走】receipt: receiptBase64 
         };
 
         try {
-            const resp = await fetch(API, {
+            await fetch(API, {
                 method: 'POST',
                 body: JSON.stringify({ action: 'add_batch', items: [item] })
             });
-            const result = await resp.json();
-            if (result.ok) {
-                // 成功後清空欄位
-                document.getElementById('iptReceipt').value = '';
-                location.reload();
-            }
+            // 【剷走】document.getElementById('iptReceipt').value = '';
+            location.reload(); 
         } catch(e) { 
             alert('Save failed'); 
             showLoading(false); 
