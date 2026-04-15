@@ -381,37 +381,33 @@ input::-webkit-calendar-picker-indicator {
         const desc = document.getElementById('iptDesc').value;
         const amt = parseFloat(document.getElementById('iptAmt').value);
         const date = document.getElementById('iptDate').value;
-        // 【剷走】const receiptFile = document.getElementById('iptReceipt').files[0];
 
         if(!desc || isNaN(amt)) return alert('Please fill in');
-        showLoading(true);
-
-        // 【剷走所有處理相片轉 Base64 嘅 code】
-        // let receiptBase64 = "";
-        // if (receiptFile) {
-        //    ...
-        // }
-
+        
+        // --- 極速邏輯：唔等 Google，先清空畫面話 OK ---
+        alert('Success / 已收到！背後處理中...'); 
+        
+        // 準備數據
         const item = {
             member: activeMember, 
             desc: desc, 
             amount: amt,
             month: date.slice(0, 7), 
             date: date
-            // 【剷走】receipt: receiptBase64 
         };
 
-        try {
-            await fetch(API, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'add_batch', items: [item] })
-            });
-            // 【剷走】document.getElementById('iptReceipt').value = '';
-            location.reload(); 
-        } catch(e) { 
-            alert('Save failed'); 
-            showLoading(false); 
-        }
+        // 清空輸入框，方便入下一條
+        document.getElementById('iptDesc').value = '';
+        document.getElementById('iptAmt').value = '';
+
+        // 背後傳送 (唔加 await，唔等佢完)
+        fetch(API, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'add_batch', items: [item] })
+        }).then(() => {
+            console.log("Background sync done.");
+            // 如果你想佢靜靜雞更新數據，可以喺度加 fetchData();
+        });
     }
 
     async function addFixedExpenses() {
