@@ -241,7 +241,7 @@ input::-webkit-calendar-picker-indicator {
 <input type="file" id="aiFile" accept="image/*" style="display:none" onchange="processAI(this)">
 <script>
     const API = 'https://script.google.com/macros/s/AKfycbz8ffH1DFaC2hV5QF3oqOPkFViAEcqylV0xpiDaMRe4MmB3EZFWg-K7OFOrlybl1l4u2g/exec';
-    let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [] };
+    let state = { members: ['Peter', 'Alice', 'Bryan', 'Monie'], expenses: [], cards: [] };
     let activeMember = 'Peter';
     let activeMonth = new Date().toISOString().slice(0, 7);
 
@@ -268,39 +268,36 @@ input::-webkit-calendar-picker-indicator {
     function setMember(m) { activeMember = m; renderMembers(); }
 
     async function fetchData() {
-    showLoading(true);
-    try {
-        // 加個 nocache 確保每次都係攞最新數據
-        const r = await fetch(API + '?nocache=' + Date.now());
-        const j = await r.json();
-        
-        if (j.ok) {
-            state.expenses = j.data.expenses || [];
-            state.cards = j.data.cards || []; // 呢度就係同步返嚟嘅卡片
-            renderSummary();
-            // 如果你正處於會員卡頁面，就順便更新畫面
-            if (document.getElementById('page-cards').classList.contains('active')) {
-                renderCards();
+        showLoading(true);
+        try {
+            const r = await fetch(API + '?nocache=' + Date.now());
+            const j = await r.json();
+            if (j.ok) {
+                state.expenses = j.data.expenses || [];
+                state.cards = j.data.cards || [];
+                renderSummary();
+                if (document.getElementById('page-cards').classList.contains('active')) renderCards();
             }
+        } catch(e) { 
+            console.error(e);
+            alert('連線失敗'); 
         }
-    } catch(e) { 
-        console.error(e);
-        alert('連線失敗，請檢查網路或 API 網址'); 
+        showLoading(false);
     }
-    showLoading(false);
-}
 
     function renderSummary() {
         document.querySelectorAll('.curMonthText').forEach(el => el.innerText = activeMonth);
         
         const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
         
-        // 修正 1：計 Total 時先剷走 £ 同埋逗號
-        const total = monthly.reduce((s, e) => {
-            const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
-            return s + (parseFloat(cleanAmt) || 0);
-        }, 0);
-        
+        // 統一清理數字邏輯
+        const cleanNumber = (val) => {
+            if (val === null || val === undefined) return 0;
+            const s = String(val).replace(/[^0-9.]/g, ''); 
+            return parseFloat(s) || 0;
+        };
+
+        const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
         const each = total / state.members.length;
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
@@ -308,12 +305,7 @@ input::-webkit-calendar-picker-indicator {
         let memberBalances = [];
 
         state.members.forEach(m => {
-            // 修正 2：計個人已付時同樣剷走符號
-            const paid = monthly.filter(e => e.member === m).reduce((s, e) => {
-                const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
-                return s + (parseFloat(cleanAmt) || 0);
-            }, 0);
-            
+            const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + cleanNumber(e.amount), 0);
             const bal = paid - each;
             memberBalances.push({ name: m, balance: bal });
 
@@ -326,19 +318,20 @@ input::-webkit-calendar-picker-indicator {
                 </div>`;
         });
 
-        let clearingHtml = '<div style="margin-top:20px; border-top:2px dashed #e5e5ea; padding-top:15px;"><h3>Suggested Payments / 轉帳建議</h3>';
+        // 轉帳建議
+        let clearingHtml = '<div style="margin-top:20px; border-top:2px dashed #e5e5ea; padding-top:15px;"><h3>Suggested Payments</h3>';
         let debtors = memberBalances.filter(m => m.balance < -0.01).sort((a, b) => a.balance - b.balance);
         let creditors = memberBalances.filter(m => m.balance > 0.01).sort((a, b) => b.balance - a.balance);
 
         if (debtors.length === 0) {
-            clearingHtml += '<p style="color:#8e8e93;">All settled! / 帳目已清</p>';
+            clearingHtml += '<p style="color:#8e8e93;">All settled!</p>';
         } else {
             debtors.forEach(d => {
                 let debt = Math.abs(d.balance);
                 creditors.forEach(c => {
                     if (debt > 0 && c.balance > 0) {
                         let amount = Math.min(debt, c.balance);
-                        clearingHtml += `<p style="font-size:14px; margin:5px 0;">💸 <strong>${d.name}</strong> ➔ <strong>${c.name}</strong>: <span style="color:#e74c3c; font-weight:bold;">£${amount.toFixed(2)}</span></p>`;
+                        clearingHtml += `<p style="font-size:14px; margin:5px 0;">💸 <strong>${d.name}</strong> ➔ <strong>${c.name}</strong>: £${amount.toFixed(2)}</p>`;
                         debt -= amount;
                         c.balance -= amount;
                     }
@@ -348,19 +341,18 @@ input::-webkit-calendar-picker-indicator {
         clearingHtml += '</div>';
         document.getElementById('settleList').innerHTML = settleHtml + clearingHtml;
 
-        // 修正 3：渲染最近紀錄時剷走符號
+        // 最近紀錄 (使用 cleanNumber)
         const recent5 = [...state.expenses].reverse().slice(0, 5);
-        let recentHtml = recent5.map(e => {
-            const cleanAmt = String(e.amount || 0).replace(/[£,]/g, '');
-            return `
-                <div class="recent-item">
-                    <span style="flex: 2;">${e.desc}</span>
-                    <span style="flex: 1; text-align: right; font-weight: bold;">£${parseFloat(cleanAmt).toFixed(2)}</span>
-                    <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
-                </div>`;
-        }).join('');
+        let recentHtml = recent5.map(e => `
+            <div class="recent-item">
+                <span style="flex: 2;">${e.desc}</span>
+                <span style="flex: 1; text-align: right; font-weight: bold;">£${cleanNumber(e.amount).toFixed(2)}</span>
+                <span style="flex: 1; text-align: right; color: #8e8e93;">${e.member}</span>
+            </div>
+        `).join('');
         document.getElementById('recentList').innerHTML = recentHtml || '<p style="text-align:center;color:#ccc;">No records</p>';
     }
+
     function changeMonth(step) {
         let [y, m] = activeMonth.split('-').map(Number);
         m += step;
@@ -372,7 +364,7 @@ input::-webkit-calendar-picker-indicator {
     async function submitData() {
         const desc = document.getElementById('iptDesc').value;
         const amt = parseFloat(document.getElementById('iptAmt').value);
-        if(!desc || !amt) return alert('Please fill in / 請填寫完整');
+        if(!desc || !amt) return alert('Please fill in');
         showLoading(true);
         const item = {
             member: activeMember, desc: desc, amount: amt,
@@ -386,18 +378,17 @@ input::-webkit-calendar-picker-indicator {
     }
 
     async function addFixedExpenses() {
-        if(!confirm('Confirm adding fixed expenses? / 確定加入固定支出？')) return;
+        if(!confirm('Confirm adding fixed expenses?')) return;
         const date = document.getElementById('iptDate').value;
         const month = date.slice(0, 7);
-        FIXED_ITEMS.forEach(f => {
-            state.expenses.push({ ...f, date: date, month: month, id: 'temp-' + Date.now() });
-        });
-        renderSummary(); 
-        alert('Added locally! Saving...');
-        fetch(API, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
-        });
+        showLoading(true);
+        try {
+            await fetch(API, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'add_batch', items: FIXED_ITEMS.map(f => ({...f, date: date, month: month})) })
+            });
+            location.reload();
+        } catch(e) { alert('Save failed'); showLoading(false); }
     }
 
     function showPage(pageId) {
@@ -405,12 +396,11 @@ input::-webkit-calendar-picker-indicator {
         document.getElementById('page-' + pageId).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('nav-' + pageId).classList.add('active');
-        renderSummary();
+        if (pageId === 'cards') renderCards();
+        else renderSummary();
     }
 
-    function showLoading(show) {
-        document.getElementById('loading').style.display = show ? 'flex' : 'none';
-    }
+    function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 
     function exportToExcel() {
         const monthly = state.expenses.filter(e => String(e.month).includes(activeMonth));
@@ -420,107 +410,69 @@ input::-webkit-calendar-picker-indicator {
         XLSX.writeFile(wb, `Family_Expenses_${activeMonth}.xlsx`);
     }
 
-// 顯示彈窗
-function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
+    function openModal() { document.getElementById('cardModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('cardModal').style.display = 'none'; }
 
-// 儲存新卡
-async function saveNewCard() {
-    const name = document.getElementById('newCardName').value;
-    const file = document.getElementById('newCardImg').files[0];
-
-    if (!name || !file) return alert('Please enter name and select photo!');
-
-    showLoading(true);
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const payload = {
-            action: 'add_card',
-            name: name,
-            img: e.target.result // Base64 圖片字串
+    async function saveNewCard() {
+        const name = document.getElementById('newCardName').value;
+        const file = document.getElementById('newCardImg').files[0];
+        if (!name || !file) return alert('Please enter name and select photo!');
+        showLoading(true);
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const resp = await fetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'add_card', name: name, img: e.target.result })
+                });
+                const result = await resp.json();
+                if (result.ok) {
+                    closeModal();
+                    await fetchData();
+                }
+            } catch(err) { alert('Save failed!'); }
+            showLoading(false);
         };
-        
+        reader.readAsDataURL(file);
+    }
+
+    function renderCards() {
+        const searchTerm = document.getElementById('cardSearch').value.toLowerCase();
+        const list = document.getElementById('memberCardList');
+        const filtered = (state.cards || [])
+            .filter(c => c.name.toLowerCase().includes(searchTerm))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        if (filtered.length === 0) {
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No cards found</div>';
+            return;
+        }
+        list.innerHTML = filtered.map(c => `
+            <div class="member-card-item">
+                <button class="delete-card" onclick="deleteCard('${c.id}')">×</button>
+                <img src="${c.img}" class="member-card-img" onclick="viewImage('${c.img}')">
+                <div class="member-card-info">${c.name}</div>
+            </div>
+        `).join('');
+    }
+
+    async function deleteCard(id) {
+        if(!confirm('Delete this card?')) return;
+        showLoading(true);
         try {
             const resp = await fetch(API, {
                 method: 'POST',
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ action: 'delete_card', id: id })
             });
             const result = await resp.json();
-            
-            if (result.ok) {
-                closeModal();
-                document.getElementById('newCardName').value = '';
-                document.getElementById('newCardImg').value = '';
-                // 儲存成功後，重新去雲端攞最新數據
-                await fetchData(); 
-            }
-        } catch(err) {
-            alert('Save failed! / 儲存失敗');
-        }
+            if (result.ok) await fetchData();
+        } catch(e) { alert('Delete failed!'); }
         showLoading(false);
-    };
-    reader.readAsDataURL(file);
-}
-// 渲染卡片列表 (含 A-Z 排序同搜尋)
-function renderCards() {
-    const searchTerm = document.getElementById('cardSearch').value.toLowerCase();
-    const list = document.getElementById('memberCardList');
-    
-    // 由雲端 state 攞料，並進行 A-Z 排序
-    const filtered = (state.cards || [])
-        .filter(c => c.name.toLowerCase().includes(searchTerm))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    if (filtered.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No cards found</div>';
-        return;
     }
 
-    list.innerHTML = filtered.map(c => `
-        <div class="member-card-item">
-            <button class="delete-card" onclick="deleteCard('${c.id}')">×</button>
-            <img src="${c.img}" class="member-card-img" onclick="viewImage('${c.img}')">
-            <div class="member-card-info">${c.name}</div>
-        </div>
-    `).join('');
-}
-
-// 刪除卡片
-async function deleteCard(id) {
-    if(!confirm('Delete this card for everyone? / 確定要全家同步刪除？')) return;
-    
-    showLoading(true);
-    try {
-        const resp = await fetch(API, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete_card', id: id })
-        });
-        const result = await resp.json();
-        if (result.ok) {
-            await fetchData(); // 重新整理雲端數據
-        }
-    } catch(e) {
-        alert('Delete failed! / 刪除失敗');
+    function viewImage(src) {
+        const win = window.open("");
+        win.document.write(`<img src="${src}" style="width:100%; height:auto;">`);
     }
-    showLoading(false);
-}
-
-// 點擊放大相片 (簡單版)
-function viewImage(src) {
-    const win = window.open("");
-    win.document.write(`<img src="${src}" style="width:100%; height:auto;">`);
-}
-
-// 修改原本的 showPage 加入 renderCards 觸發
-function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('nav-' + pageId).classList.add('active');
-    
-    if (pageId === 'cards') renderCards(); // 切換到卡片頁時刷新
-    else renderSummary();
-}
 </script>
 </body>
 </html>
