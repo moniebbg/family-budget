@@ -1,15 +1,30 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
+    <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-title" content="Family Expense">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <link rel="apple-touch-icon" href="https://drive.google.com/uc?export=view&id=1X1r5TL2ouTJ3RTP6AzvzaxmEJLvGbyX0">
-
     <link rel="icon" type="image/png" href="https://drive.google.com/uc?export=view&id=1X1r5TL2ouTJ3RTP6AzvzaxmEJLvGbyX0">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Family Expense 家庭分帳</title>
+
+    <script>
+        document.addEventListener('touchstart', function (event) {
+            // 由於呢段 code 擺喺 head，執行時可能仲未有 fullImageOverlay 呢個 element
+            // 所以加多個 null check 會穩陣啲
+            const overlay = document.getElementById('fullImageOverlay');
+            const isOverlayOpen = overlay && overlay.style.display === 'flex';
+            
+            if (event.touches.length > 1 && !isOverlayOpen) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+    
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -26,11 +41,14 @@
     align-items: center;
     cursor: pointer;
 }
+/* 全銀幕放大圖層入面張相 */
 .img-overlay img {
     max-width: 95%;
     max-height: 85%;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(255,255,255,0.2);
+    /* 重點：話俾瀏覽器知呢張相係准許 pinch-zoom (兩指縮放) 嘅 */
+    touch-action: pinch-zoom; 
 }
 .img-overlay .close-tip {
     position: absolute;
