@@ -9,21 +9,23 @@
     <link rel="apple-touch-icon" href="https://drive.google.com/uc?export=view&id=1X1r5TL2ouTJ3RTP6AzvzaxmEJLvGbyX0">
     <link rel="icon" type="image/png" href="https://drive.google.com/uc?export=view&id=1X1r5TL2ouTJ3RTP6AzvzaxmEJLvGbyX0">
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Expense 家庭分帳</title>
 
     <script>
-        document.addEventListener('touchstart', function (event) {
-            // 由於呢段 code 擺喺 head，執行時可能仲未有 fullImageOverlay 呢個 element
-            // 所以加多個 null check 會穩陣啲
-            const overlay = document.getElementById('fullImageOverlay');
-            const isOverlayOpen = overlay && overlay.style.display === 'flex';
-            
-            if (event.touches.length > 1 && !isOverlayOpen) {
-                event.preventDefault();
-            }
-        }, { passive: false });
-    </script>
+    // 確保成個畫面載入後先至執行
+    document.addEventListener('touchstart', function (event) {
+        // 檢查係咪正喺度睇緊放大咗嘅會員卡
+        const overlay = document.querySelector('#fullImageOverlay');
+        const isVisible = overlay && window.getComputedStyle(overlay).display !== 'none';
+
+        // 如果係「兩隻手指操作」而且「冇開緊放大圖」，就鎖死佢（防止 App 畫面亂跳）
+        // 如果「開緊放大圖」，就放手俾 user 縮放
+        if (event.touches.length > 1 && !isVisible) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+</script>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -516,7 +518,7 @@ input::-webkit-calendar-picker-indicator {
 
     // 2. 計算總數同每人應付 (除 4)
     const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
-    const perPerson = (total / 4).toFixed(2);
+    const perPerson = (total / state.members.length).toFixed(2);
 
     // --- 頂部排版 ---
     // A-F 跨行居中：顯示月份
