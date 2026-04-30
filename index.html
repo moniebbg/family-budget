@@ -514,7 +514,7 @@ input::-webkit-calendar-picker-indicator {
         return eMonth === activeMonth;
     });
 
-    if (monthly.length === 0) return alert('呢個月冇數據！');
+    if (monthly.length === 0) return alert('No data in this month！呢個月冇數據！');
 
     // 2. 計算總數同每人應付 (除 4)
     const total = monthly.reduce((s, e) => s + cleanNumber(e.amount), 0);
