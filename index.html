@@ -169,7 +169,7 @@
 <!-- Bottom Navigation (底部導航) -->
 <div class="bottom-nav">
     <div id="nav-mark" class="nav-item active" onclick="showPage('mark')">
-        <div class="nav-icon">✍🏻</div>
+        <div class="nav-icon">✍️</div>
         <div class="nav-label">Mark 數</div>
         <div class="nav-sub">Input</div>
     </div>
@@ -203,7 +203,7 @@
 </div>
 
 <script>
-    const API = 'https://script.google.com/macros/s/AKfycbzKGC5xqgFCUsQbEsnZSSFsOpARfh-pyJBx-spPBPedmmTf3F6J5NJXoT7lsdEbTFyLNg/exec'; // <--- 記得換返你嗰串網址
+    const API = 'https://script.google.com/macros/s/AKfycbxb88rFuY13vMngRNIU94uG-nPgO4Xkb_TTtLdeUjeCxNa1EnLyERV5LgvSp2JI4DSu0w/exec'; // <--- 記得換返你嗰串網址
 
     let state = {
         members: ['Peter', 'Alice', 'Bryan', 'Monie'],
@@ -332,22 +332,16 @@
     }
 
     function editEntry(id, member, desc, amount, date) {
-    state.editingId = id;
-    state.activeMember = member;
-    renderMembers();
-    document.getElementById('iptDesc').value = desc;
-    document.getElementById('iptAmt').value = amount;
-    document.getElementById('iptDate').value = date;
-    
-    // --- 修改呢度：顯示刪除，隱藏固定支出 ---
-    document.getElementById('submitBtn').innerText = "Update / 更新紀錄";
-    document.getElementById('submitBtn').style.background = "#ff9500";
-    document.getElementById('deleteBtn').style.display = "block"; 
-    document.getElementById('fixedBtn').style.display = "none";  
-    // ------------------------------------
-    
-    window.scrollTo(0, 0);
-}
+        state.editingId = id;
+        state.activeMember = member;
+        renderMembers();
+        document.getElementById('iptDesc').value = desc;
+        document.getElementById('iptAmt').value = amount;
+        document.getElementById('iptDate').value = date;
+        document.getElementById('submitBtn').innerText = "Update / 更新紀錄";
+        document.getElementById('submitBtn').style.background = "#ff9500";
+        window.scrollTo(0, 0);
+    }
 
     async function submitData() {
         const desc = document.getElementById('iptDesc').value;
@@ -374,40 +368,12 @@
     }
 
     function resetForm() {
-    state.editingId = null;
-    document.getElementById('iptDesc').value = '';
-    document.getElementById('iptAmt').value = '';
-    document.getElementById('submitBtn').innerText = "Confirm / 確認入帳";
-    document.getElementById('submitBtn').style.background = "var(--p-color)";
-    
-    // --- 修改呢度：變返原狀 ---
-    document.getElementById('deleteBtn').style.display = "none";
-    document.getElementById('fixedBtn').style.display = "block";
-    // -------------------------
-}
-
-    async function deleteEntry() {
-    if (!state.editingId) return;
-    if (!confirm('Confirm delete?\n確定要刪除呢條紀錄？')) return;
-
-    showLoading(true);
-    try {
-        await fetch(API, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            body: JSON.stringify({ action: 'delete', id: state.editingId }) 
-        });
-        
-        setTimeout(async () => {
-            await fetchData();
-            resetForm();
-            showLoading(false);
-        }, 1500);
-    } catch(e) { 
-        alert('Delete error'); 
-        showLoading(false); 
+        state.editingId = null;
+        document.getElementById('iptDesc').value = '';
+        document.getElementById('iptAmt').value = '';
+        document.getElementById('submitBtn').innerText = "Confirm / 確認入帳";
+        document.getElementById('submitBtn').style.background = "var(--p-color)";
     }
-}
 
     function changeMonth(step) {
         let [y, m] = state.activeMonth.split('-').map(Number);
