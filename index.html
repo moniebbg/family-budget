@@ -230,19 +230,29 @@
     function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
 
     async function fetchData() {
-        showLoading(true);
-        try {
-            const r = await fetch(API + '?nocache=' + Date.now());
-            const j = await r.json();
-            if (j.ok) {
-                state.expenses = j.data.expenses || [];
-                state.cards = j.data.cards || [];
-                renderSummary();
-                renderCards();
-            }
-        } catch(e) { alert('Fetch Error!'); }
-        showLoading(false);
+    showLoading(true);
+    try {
+        // 唔好加 nocache 住，先試吓最基本嘅 fetch
+        const r = await fetch(API); 
+        
+        if (!r.ok) throw new Error('Network response was not ok');
+        
+        const j = await r.json();
+        if (j.ok) {
+            state.expenses = j.data.expenses || [];
+            state.cards = j.data.cards || [];
+            renderSummary();
+            renderCards();
+        } else {
+            console.error('Server Error:', j.error);
+            alert('伺服器錯誤: ' + (j.error || '未知錯誤'));
+        }
+    } catch(e) { 
+        console.error('Fetch 失敗詳情:', e);
+        alert('Fetch Error! 可能原因：\n1. API URL 錯咗\n2. 後端未寫 doGet\n3. 網絡問題'); 
     }
+    showLoading(false);
+}
 
     function renderMembers() {
         document.getElementById('memberBtns').innerHTML = state.members.map(m => 
