@@ -256,40 +256,72 @@
 
         const monthly = state.expenses.filter(e => String(e.month).slice(0, 7) === state.activeMonth);
         const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const avg = total / state.members.length; // 每人應付金額
+        const avg = total / state.members.length; // 每人應付
         
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
-        // Settle List (自動計算差額)
-        const settleHtml = state.members.map(m => {
-            const mPaid = monthly.filter(e => e.member === m).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-            const diff = mPaid - avg; // 俾多咗定俾少咗
-            
-            // 決定顯示紅色「補錢」定綠色「收錢」
+        // --- 1. 計算每人結餘 ---
+        let balances = state.members.map(m => {
+            const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+            return { name: m, paid: paid, balance: paid - avg };
+        });
+
+        // 渲染結算列表 (加強版標籤)
+        const settleHtml = balances.map(b => {
             let statusTag = '';
-            if (diff < -0.01) {
-                statusTag = `<span style="background:#fff1f1; color:#ff3b30; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:bold;">補錢 £${Math.abs(diff).toFixed(2)}</span>`;
-            } else if (diff > 0.01) {
-                statusTag = `<span style="background:#f2fff2; color:#34c759; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:bold;">收錢 £${diff.toFixed(2)}</span>`;
+            if (b.balance < -0.01) {
+                statusTag = `<span style="background:#fff1f1; color:#ff3b30; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:bold;">Pay / 補 £${Math.abs(b.balance).toFixed(2)}</span>`;
+            } else if (b.balance > 0.01) {
+                statusTag = `<span style="background:#f2fff2; color:#34c759; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:bold;">Recv / 收 £${b.balance.toFixed(2)}</span>`;
             } else {
-                statusTag = `<span style="color:#8e8e93; font-size:12px;">已平帳</span>`;
+                statusTag = `<span style="color:#8e8e93; font-size:13px;">平帳</span>`;
             }
 
             return `
-                <div class="recent-item" style="align-items: center;">
+                <div class="recent-item" style="align-items: center; padding: 12px 0;">
                     <div>
-                        <strong style="font-size:16px;">${m}</strong><br>
-                        <small style="color:#8e8e93;">已付: £${mPaid.toFixed(2)}</small>
+                        <strong style="font-size:16px;">${b.name}</strong><br>
+                        <small style="color:#8e8e93;">Paid £${b.paid.toFixed(2)}</small>
                     </div>
-                    <div style="text-align:right;">
-                        ${statusTag}
-                    </div>
+                    <div>${statusTag}</div>
                 </div>`;
         }).join('');
-        
-        document.getElementById('settleList').innerHTML = settleHtml;
 
-        // Recent List (最近 5 次紀錄)
+        // --- 2. 計算 Suggested Payments (轉帳路徑) ---
+        let debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
+        let creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+        let suggestions = [];
+
+        let dIdx = 0, cIdx = 0;
+        while (dIdx < debtors.length && cIdx < creditors.length) {
+            let d = debtors[dIdx];
+            let c = creditors[cIdx];
+            let amount = Math.min(Math.abs(d.balance), c.balance);
+            
+            if (amount > 0.01) {
+                suggestions.push(`💸 <strong>${d.name} ➔ ${c.name}:</strong> <span style="color:#ff3b30; font-weight:bold;">£${amount.toFixed(2)}</span>`);
+            }
+            
+            d.balance += amount;
+            c.balance -= amount;
+            if (Math.abs(d.balance) < 0.01) dIdx++;
+            if (Math.abs(c.balance) < 0.01) cIdx++;
+        }
+
+        const suggestionHtml = suggestions.length > 0 ? 
+            `<div style="margin-top:20px; padding-top:15px; border-top: 1px dashed #ddd;">
+                <h3 style="font-size:18px;">Suggested Payments</h3>
+                <div style="line-height:2;">${suggestions.join('<br>')}</div>
+            </div>` : '';
+
+        // 顯示內容 (加入 "Per Person" 資訊)
+        document.getElementById('settleList').innerHTML = `
+            <p style="color:#007aff; font-weight:bold; font-size:16px; margin-bottom:15px;">Per Person / 每人應付: £${avg.toFixed(2)}</p>
+            ${settleHtml}
+            ${suggestionHtml}
+        `;
+
+        // 更新最近紀錄
         const recentHtml = state.expenses.slice(-5).reverse().map(e => `
             <div class="recent-item" onclick="editEntry('${e.id}', '${e.member}', '${e.desc}', ${e.amount}, '${e.date}')">
                 <div><strong>${e.desc}</strong><br><small>${e.date} (${e.member})</small></div>
@@ -362,15 +394,49 @@
     async function exportToPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        
         const monthly = state.expenses.filter(e => String(e.month).slice(0, 7) === state.activeMonth);
         if(!monthly.length) return alert('No data');
 
         const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        doc.text(`Expense Report: ${state.activeMonth}`, 14, 15);
-        doc.text(`Total: GBP ${total.toFixed(2)}`, 14, 25);
+        const avg = total / state.members.length;
+
+        // 1. 設置標題 (中間)
+        doc.setFontSize(22);
+        doc.setFont(undefined, 'bold');
+        const title = state.activeMonth;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.text(title, pageWidth / 2, 20, { align: 'center' });
+
+        // 2. 右上角資訊
+        doc.setFontSize(12);
+        doc.text(`Total : £${total.toFixed(2)}`, pageWidth - 15, 30, { align: 'right' });
+        doc.text(`Per Person: £${avg.toFixed(2)}`, pageWidth - 15, 38, { align: 'right' });
+
+        // 3. 表格 (黑白簡約風)
+        const rows = monthly.map(e => [e.member, e.desc, `£${parseFloat(e.amount).toFixed(2)}`, e.date]);
         
-        const rows = monthly.map(e => [e.date, e.member, e.desc, `£${parseFloat(e.amount).toFixed(2)}`]);
-        doc.autoTable({ head: [['Date', 'Member', 'Desc', 'Amt']], body: rows, startY: 30 });
+        doc.autoTable({
+            head: [['Member', 'Description', 'Amount', 'Date']],
+            body: rows,
+            startY: 45,
+            theme: 'grid',
+            headStyles: { 
+                fillColor: [255, 255, 255], 
+                textColor: [0, 0, 0], 
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [200, 200, 200]
+            },
+            styles: { 
+                fontSize: 10,
+                cellPadding: 4
+            },
+            columnStyles: {
+                2: { halign: 'right' } // Amount 靠右
+            }
+        });
+
         doc.save(`Expenses_${state.activeMonth}.pdf`);
     }
 
