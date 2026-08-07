@@ -29,62 +29,38 @@
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--p-color); color: white; }
         .recent-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f2f2f7; font-size: 14px; cursor: pointer; }
-        /* --- 修正版：底部導航欄樣式 --- */
-.bottom-nav { 
-    position: fixed; 
-    bottom: 0; 
-    left: 0; 
-    width: 100%; 
-    background: #ffffff; 
-    display: flex; 
-    padding: 10px 0; 
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.08); 
-    z-index: 1000; 
-    padding-bottom: calc(10px + env(safe-area-inset-bottom)); 
-}
+        
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            background: #ffffff; 
+            display: flex; 
+            padding: 10px 0; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.08); 
+            z-index: 1000; 
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)); 
+        }
 
-.nav-item { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; /* 確保內容垂直排位 */
-    align-items: center; 
-    justify-content: center; 
-    color: #8e8e93; 
-    cursor: pointer; 
-    text-decoration: none;
-}
+        .nav-item { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            color: #8e8e93; 
+            cursor: pointer; 
+            text-decoration: none;
+        }
 
-.nav-item.active { 
-    color: var(--p-color); 
-}
-
-.nav-icon { 
-    font-size: 24px; 
-    margin-bottom: 2px; 
-    line-height: 1;
-}
-
-/* 中文粗體 */
-.nav-label { 
-    font-size: 13px; 
-    font-weight: bold; 
-    line-height: 1.2;
-}
-
-/* 英文細字 */
-.nav-sub { 
-    font-size: 11px; 
-    font-weight: normal; 
-    opacity: 0.7; 
-    line-height: 1.2;
-}
-/* --- 結束修正 --- */
-        .nav-item { text-align: center; color: #8e8e93; font-size: 11px; flex: 1; cursor: pointer; }
         .nav-item.active { color: var(--p-color); font-weight: bold; }
-        .nav-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-icon { font-size: 24px; margin-bottom: 2px; line-height: 1; }
+        .nav-label { font-size: 13px; font-weight: bold; line-height: 1.2; }
+        .nav-sub { font-size: 11px; font-weight: normal; opacity: 0.7; line-height: 1.2; }
         .page { display: none; }
         .page.active { display: block; }
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; }
         .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .member-card-item { background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5ea; position: relative; }
         .member-card-img { width: 100%; height: 100px; object-fit: cover; }
@@ -104,7 +80,7 @@
     <div class="month-nav">
         <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
         <div style="flex: 1; text-align: center;">
-            <h3 id="markMonthText" style="margin:0;">2026-04</h3>
+            <h3 id="markMonthText" style="margin:0;">2026-08</h3>
             <span class="lang-sub">Month / 月份</span>
         </div>
         <button class="nav-btn" onclick="changeMonth(1)">▶</button>
@@ -121,6 +97,7 @@
         <input type="number" id="iptAmt" step="0.01" inputmode="decimal">
 
         <button id="submitBtn" class="btn btn-main" onclick="submitData()">Confirm / 確認入帳</button>
+        <button id="deleteBtn" class="btn" style="background:#ff3b30; color:white; display:none;" onclick="deleteEntry()">Delete / 刪除紀錄</button>
         <button class="btn" style="background:#5856d6; color:white;" onclick="addFixedExpenses()">➕ Add fixed expenses/一鍵固定支出</button>
     </div>
 
@@ -135,7 +112,7 @@
     <div class="month-nav">
         <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
         <div style="text-align: center;">
-            <h3 id="settleMonthText">2026-04</h3>
+            <h3 id="settleMonthText">2026-08</h3>
             <span class="lang-sub">Month / 月份</span>
         </div>
         <button class="nav-btn" onclick="changeMonth(1)">▶</button>
@@ -166,10 +143,9 @@
 </div>
 
 <!-- Bottom Navigation -->
-<!-- Bottom Navigation (底部導航) -->
 <div class="bottom-nav">
     <div id="nav-mark" class="nav-item active" onclick="showPage('mark')">
-        <div class="nav-icon">✍🏻</div>
+        <div class="nav-icon">✍️</div>
         <div class="nav-label">Mark 數</div>
         <div class="nav-sub">Input</div>
     </div>
@@ -203,7 +179,7 @@
 </div>
 
 <script>
-    const API = 'https://script.google.com/macros/s/AKfycbxb88rFuY13vMngRNIU94uG-nPgO4Xkb_TTtLdeUjeCxNa1EnLyERV5LgvSp2JI4DSu0w/exec'; // <--- 記得換返你嗰串網址
+    const API = 'https://script.google.com/macros/s/AKfycbxb88rFuY13vMngRNIU94uG-nPgO4Xkb_TTtLdeUjeCxNa1EnLyERV5LgvSp2JI4DSu0w/exec'; // 你的 API URL
 
     let state = {
         members: ['Peter', 'Alice', 'Bryan', 'Monie'],
@@ -232,15 +208,19 @@
     async function fetchData() {
         showLoading(true);
         try {
-            const r = await fetch(API + '?nocache=' + Date.now());
+            const r = await fetch(API);
             const j = await r.json();
             if (j.ok) {
                 state.expenses = j.data.expenses || [];
                 state.cards = j.data.cards || [];
                 renderSummary();
                 renderCards();
+            } else {
+                alert('伺服器錯誤: ' + (j.error || '無法讀取資料'));
             }
-        } catch(e) { alert('Fetch Error!'); }
+        } catch(e) { 
+            alert('Fetch Error! 請確認網路連接或重新載入'); 
+        }
         showLoading(false);
     }
 
@@ -256,17 +236,15 @@
 
         const monthly = state.expenses.filter(e => String(e.month).slice(0, 7) === state.activeMonth);
         const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const avg = total / state.members.length; // 每人應付
+        const avg = total / state.members.length;
         
         document.getElementById('totalDisplay').innerText = `£${total.toFixed(2)}`;
         
-        // --- 1. 計算每人結餘 ---
         let balances = state.members.map(m => {
             const paid = monthly.filter(e => e.member === m).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
             return { name: m, paid: paid, balance: paid - avg };
         });
 
-        // 渲染結算列表 (加強版標籤)
         const settleHtml = balances.map(b => {
             let statusTag = '';
             if (b.balance < -0.01) {
@@ -287,7 +265,6 @@
                 </div>`;
         }).join('');
 
-        // --- 2. 計算 Suggested Payments (轉帳路徑) ---
         let debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
         let creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
         let suggestions = [];
@@ -314,14 +291,12 @@
                 <div style="line-height:2;">${suggestions.join('<br>')}</div>
             </div>` : '';
 
-        // 顯示內容 (加入 "Per Person" 資訊)
         document.getElementById('settleList').innerHTML = `
             <p style="color:#007aff; font-weight:bold; font-size:16px; margin-bottom:15px;">Per Person / 每人應付: £${avg.toFixed(2)}</p>
             ${settleHtml}
             ${suggestionHtml}
         `;
 
-        // 更新最近紀錄
         const recentHtml = state.expenses.slice(-5).reverse().map(e => `
             <div class="recent-item" onclick="editEntry('${e.id}', '${e.member}', '${e.desc}', ${e.amount}, '${e.date}')">
                 <div><strong>${e.desc}</strong><br><small>${e.date} (${e.member})</small></div>
@@ -338,8 +313,10 @@
         document.getElementById('iptDesc').value = desc;
         document.getElementById('iptAmt').value = amount;
         document.getElementById('iptDate').value = date;
+        
         document.getElementById('submitBtn').innerText = "Update / 更新紀錄";
         document.getElementById('submitBtn').style.background = "#ff9500";
+        document.getElementById('deleteBtn').style.display = "block";
         window.scrollTo(0, 0);
     }
 
@@ -350,21 +327,91 @@
         if (!desc || !amount) return alert('Fill all!');
 
         showLoading(true);
+        
+        const newId = state.editingId || (Date.now() + Math.floor(Math.random() * 1000)).toString();
+        const itemObj = { id: newId, member: state.activeMember, desc, amount: Number(amount), date, month: date.slice(0, 7) };
+
+        // 1. 本地預先更新 UI（即時反應）
+        if (state.editingId) {
+            const idx = state.expenses.findIndex(e => e.id.toString() === state.editingId.toString());
+            if (idx !== -1) state.expenses[idx] = itemObj;
+        } else {
+            state.expenses.push(itemObj);
+        }
+        renderSummary();
+
+        // 2. 背景同步傳送到 Google Apps Script
         const payload = {
             action: state.editingId ? 'edit' : 'add_batch',
             id: state.editingId,
-            items: state.editingId ? null : [{ member: state.activeMember, desc, amount: Number(amount), date, month: date.slice(0, 7) }],
+            items: state.editingId ? null : [itemObj],
             member: state.activeMember, desc, amount: Number(amount), date, month: date.slice(0, 7)
         };
 
         try {
             await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-            setTimeout(async () => {
-                await fetchData();
-                resetForm();
-                showLoading(false);
-            }, 1500);
-        } catch(e) { alert('Save error'); showLoading(false); }
+            resetForm();
+        } catch(e) { 
+            alert('Save error'); 
+        }
+        showLoading(false);
+    }
+
+    async function deleteEntry() {
+        if (!state.editingId) return;
+        if (!confirm('確定要刪除呢條紀錄嗎？')) return;
+
+        showLoading(true);
+
+        const targetId = state.editingId;
+
+        // 1. 本地即時移除 UI 紀錄
+        state.expenses = state.expenses.filter(e => e.id.toString() !== targetId.toString());
+        renderSummary();
+
+        // 2. 背景發送刪除命令
+        const payload = {
+            action: 'delete_entry',
+            id: targetId
+        };
+
+        try {
+            await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+            resetForm();
+        } catch(e) { 
+            alert('Delete error'); 
+        }
+        showLoading(false);
+    }
+
+    async function addFixedExpenses() {
+        if (!confirm('確定要一鍵新增固定支出嗎？')) return;
+        showLoading(true);
+        const today = new Date().toISOString().slice(0, 10);
+        const curMonth = today.slice(0, 7);
+
+        const batchItems = FIXED_ITEMS.map(f => ({
+            id: (Date.now() + Math.floor(Math.random() * 1000)).toString(),
+            member: f.member,
+            desc: f.desc,
+            amount: f.amount,
+            date: today,
+            month: curMonth
+        }));
+
+        state.expenses.push(...batchItems);
+        renderSummary();
+
+        try {
+            await fetch(API, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify({ action: 'add_batch', items: batchItems }) 
+            });
+        } catch(e) {
+            alert('Batch Add Error');
+        }
+        showLoading(false);
     }
 
     function resetForm() {
@@ -373,6 +420,7 @@
         document.getElementById('iptAmt').value = '';
         document.getElementById('submitBtn').innerText = "Confirm / 確認入帳";
         document.getElementById('submitBtn').style.background = "var(--p-color)";
+        document.getElementById('deleteBtn').style.display = "none";
     }
 
     function changeMonth(step) {
@@ -390,7 +438,6 @@
         document.getElementById('nav-'+p).classList.add('active');
     }
 
-    // PDF Export
     async function exportToPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -401,19 +448,16 @@
         const total = monthly.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
         const avg = total / state.members.length;
 
-        // 1. 設置標題 (中間)
         doc.setFontSize(22);
         doc.setFont(undefined, 'bold');
         const title = state.activeMonth;
         const pageWidth = doc.internal.pageSize.getWidth();
         doc.text(title, pageWidth / 2, 20, { align: 'center' });
 
-        // 2. 右上角資訊
         doc.setFontSize(12);
         doc.text(`Total : £${total.toFixed(2)}`, pageWidth - 15, 30, { align: 'right' });
         doc.text(`Per Person: £${avg.toFixed(2)}`, pageWidth - 15, 38, { align: 'right' });
 
-        // 3. 表格 (黑白簡約風)
         const rows = monthly.map(e => [e.member, e.desc, `£${parseFloat(e.amount).toFixed(2)}`, e.date]);
         
         doc.autoTable({
@@ -428,26 +472,18 @@
                 lineWidth: 0.1,
                 lineColor: [200, 200, 200]
             },
-            styles: { 
-                fontSize: 10,
-                cellPadding: 4
-            },
-            columnStyles: {
-                2: { halign: 'right' } // Amount 靠右
-            }
+            styles: { fontSize: 10, cellPadding: 4 },
+            columnStyles: { 2: { halign: 'right' } }
         });
 
         doc.save(`Expenses_${state.activeMonth}.pdf`);
     }
 
-    // Card Logic
     function openModal() { document.getElementById('cardModal').style.display='flex'; }
     function closeModal() { document.getElementById('cardModal').style.display='none'; }
 
     function renderCards() {
         const q = document.getElementById('cardSearch').value.toLowerCase();
-        
-        // 關鍵修改：先 filter 搜尋內容，再按店名 A-Z 排序
         const filtered = state.cards
             .filter(c => c.name.toLowerCase().includes(q))
             .sort((a, b) => a.name.localeCompare(b.name, 'zh-HK')); 
@@ -456,7 +492,6 @@
             <div class="member-card-item">
                 <button class="delete-card" onclick="deleteCard('${c.id}')">×</button>
                 <img src="${c.img}" class="member-card-img" onclick="document.getElementById('fullImageTag').src='${c.img}'; document.getElementById('fullImageOverlay').style.display='flex'">
-                <!-- 修改：店名加強粗體視覺效果 -->
                 <div style="padding:8px; text-align:center; font-weight:bold; border-top: 1px solid #f2f2f7;">${c.name}</div>
             </div>
         `).join('');
@@ -465,8 +500,11 @@
     async function deleteCard(id) {
         if(!confirm('Delete?')) return;
         showLoading(true);
+        state.cards = state.cards.filter(c => c.id.toString() !== id.toString());
+        renderCards();
+
         await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'delete_card', id: id }) });
-        setTimeout(fetchData, 1500);
+        showLoading(false);
     }
 
     async function saveNewCard() {
@@ -476,9 +514,13 @@
         showLoading(true);
         const reader = new FileReader();
         reader.onload = async (e) => {
+            const newCard = { id: Date.now().toString(), name, img: e.target.result };
+            state.cards.push(newCard);
+            renderCards();
+
             await fetch(API, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'add_card', name, img: e.target.result }) });
             closeModal();
-            setTimeout(fetchData, 1500);
+            showLoading(false);
         };
         reader.readAsDataURL(file);
     }
