@@ -359,7 +359,7 @@
 
     async function deleteEntry() {
         if (!state.editingId) return;
-        if (!confirm('確定要刪除呢條紀錄嗎？')) return;
+        if (!confirm('Are you sure you want to delete this record?確定要刪除呢條紀錄嗎？')) return;
 
         showLoading(true);
 
